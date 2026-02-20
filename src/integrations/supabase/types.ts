@@ -134,22 +134,34 @@ export type Database = {
       }
       organizations: {
         Row: {
+          central_council_name: string | null
+          city: string | null
+          cnpj: string | null
           created_at: string
           id: string
+          metropolitan_council_name: string | null
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
           parent_id: string | null
         }
         Insert: {
+          central_council_name?: string | null
+          city?: string | null
+          cnpj?: string | null
           created_at?: string
           id?: string
+          metropolitan_council_name?: string | null
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
           parent_id?: string | null
         }
         Update: {
+          central_council_name?: string | null
+          city?: string | null
+          cnpj?: string | null
           created_at?: string
           id?: string
+          metropolitan_council_name?: string | null
           name?: string
           org_type?: Database["public"]["Enums"]["org_type"]
           parent_id?: string | null
@@ -170,6 +182,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          role_title: string | null
           updated_at: string
           user_id: string
         }
@@ -178,6 +191,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          role_title?: string | null
           updated_at?: string
           user_id: string
         }
@@ -186,6 +200,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          role_title?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -195,6 +210,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_primary: boolean
           organization_id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
@@ -202,6 +218,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_primary?: boolean
           organization_id: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
@@ -209,6 +226,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_primary?: boolean
           organization_id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
@@ -228,6 +246,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_org_by_cnpj: { Args: { _cnpj: string }; Returns: string }
       get_user_organization_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {

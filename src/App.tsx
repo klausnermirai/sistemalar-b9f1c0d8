@@ -6,7 +6,9 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/AppLayout";
 import Auth from "@/pages/Auth";
+import Setup from "@/pages/Setup";
 import Triagens from "@/pages/Triagens";
+import Settings from "@/pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +22,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/setup" element={<Setup />} />
             <Route
               path="/"
               element={
@@ -33,6 +36,14 @@ const App = () => (
               element={
                 <AppLayout>
                   <Triagens />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/configuracoes"
+              element={
+                <AppLayout>
+                  <Settings />
                 </AppLayout>
               }
             />
