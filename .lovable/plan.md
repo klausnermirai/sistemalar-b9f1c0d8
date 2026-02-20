@@ -1,64 +1,111 @@
 
 
-## Sistema de Gestão ILPI — Módulo de Triagens (Fase 1)
+## Estrutura de Acesso e Configuracao - Adaptando o Prototipo
 
-### Visão Geral
-Sistema de gestão para Instituições de Longa Permanência para Idosos (ILPI), vinculado à SSVP. Nesta primeira fase, implementaremos o módulo **Triagens** com as abas **Agendamentos** e **Entrevistas**, com backend completo (Supabase) e estrutura multi-tenant desde o início.
+### Objetivo
+Implementar o fluxo de configuracao e acesso do prototipo no sistema atual, adaptando para usar o backend com autenticacao real (Supabase Auth) em vez de localStorage. Inclui: tela de primeiro acesso (Setup), login com identificacao da instituicao, configuracoes da instituicao e controle de acesso de usuarios.
 
 ---
 
-### 1. Estrutura Multi-Tenant (Banco de Dados)
-Criação da hierarquia organizacional que será a base de todo o sistema:
-- **Tabela de organizações** com tipo (Conselho Nacional, Metropolitano, Central, Obra Unida) e referência ao nível superior
-- **Tabela de user_roles** vinculando usuários a organizações e seus papéis
-- Toda tabela de dados terá uma coluna `organization_id` para isolamento de dados
-- **Políticas RLS** garantindo que cada instituição veja apenas seus dados (preparado para futuramente permitir acesso dos conselhos superiores)
+### O que ja existe (e sera aproveitado)
+- Tabela `organizations` com hierarquia (parent_id) e tipos (conselho_nacional, metropolitano, central, obra_unida)
+- Tabela `user_roles` vinculando usuarios a organizacoes com papeis (admin, coordinator, social_worker, viewer)
+- Tabela `profiles` com dados do usuario
+- Autenticacao via Supabase Auth (email/senha)
+- Funcoes RLS: `user_belongs_to_org`, `has_role`, `get_user_organization_id`
 
-### 2. Autenticação
-- Tela de login com email e senha
-- Vinculação do usuário à sua organização (Obra Unida)
-- Proteção de rotas — apenas usuários autenticados acessam o sistema
+### Mudancas no Banco de Dados
 
-### 3. Layout Principal
-- **Sidebar** com navegação lateral no estilo do protótipo (azul escuro #004c99)
-- Logo SSVP e identidade visual do protótipo (tipografia bold/uppercase, cores azul e vermelho)
-- Menu com item "Triagens" ativo (demais itens visíveis mas desabilitados para futuras fases)
+1. **Adicionar campos na tabela `organizations`**:
+   - `cnpj` (text, nullable) - identificador da instituicao no login
+   - `city` (text, nullable) - cidade da obra unida
+   - `central_council_name` (text, nullable) - nome do conselho central vinculado (texto livre por enquanto)
+   - `metropolitan_council_name` (text, nullable) - nome do conselho metropolitano vinculado
 
-### 4. Aba Agendamentos (Etapa 0)
-- **Header** com título "Fluxo de Triagem", campo de busca e botão "Novo Agendamento"
-- **Cards de status** mostrando contagem por etapa (Agendamentos e Entrevistas ativos; demais etapas visíveis mas desabilitadas)
-- **Lista de candidatos** agendados com nome, telefone, endereço, data de contato e badge de prioridade
-- **Modal "Novo Agendamento"** — formulário simples com: Nome do Idoso, Telefone, Data do Contato e Endereço da Visita
-- **Modal "Gerenciar Etapa"** — ao clicar em um candidato, permite: iniciar a entrevista (abrir ficha completa) ou evoluir para a etapa de Entrevista
-- Opção de **arquivar** candidato com motivo (Inapto Clínico, Desistência, etc.)
+2. **Adicionar campo na tabela `profiles`**:
+   - `role_title` (text, nullable) - cargo/funcao na instituicao (ex: "Gestor(a)", "Assistente Social")
 
-### 5. Aba Entrevistas (Etapa 1)
-- Lista de candidatos na fase de entrevista
-- **Formulário completo de Entrevista Social** com 11 seções numeradas:
-  1. Identificação do Idoso (nome, nascimento, sexo, estado civil, RG, CPF, endereço, telefone)
-  2. Responsável Legal/Familiar
-  3. Composição Familiar e Rede de Apoio (com quem reside, filhos, cuidador, rede de apoio)
-  4. Composição Familiar Detalhada (tabela dinâmica com nome, parentesco, idade, trabalho, renda)
-  5. Condições de Moradia
-  6. Situação Socioeconômica (fonte de renda, empréstimos, condições da família)
-  7. Condições de Saúde (diagnósticos, medicação, acompanhamento, comprometimento cognitivo)
-  8. Grau de Dependência (higiene, alimentação, locomoção, banheiro, medicação)
-  9. Aspectos Psicossociais (conflitos familiares, concordância do idoso e família)
-  10. Motivo da Solicitação do Acolhimento
-  11. Parecer Social
-- Configuração de **prioridade** (Social Urgente, Dependência Duvidosa, Padrão)
-- Barra fixa superior com botões **Salvar** e **Imprimir Ficha**
-- Opção de evoluir para Lista de Espera (campo visível, mas etapa desabilitada nesta fase)
+3. **Adicionar campo na tabela `user_roles`**:
+   - `is_primary` (boolean, default true) - para identificar a organizacao principal do usuario
 
-### 6. Seções Complementares
-- **Painel de Arquivados** — lista de candidatos descartados com motivo
-- **Painel de Acolhidos** — lista de candidatos que foram admitidos
-- **Exportar PDF** — geração de relatório completo de candidatos por status
+### Mudancas no Frontend
 
-### 7. Design e UX
-- Fidelidade ao protótipo: cores #004c99 (azul), #e31b23 (vermelho), fundo cinza claro
-- Tipografia Inter, estilo bold/uppercase nas labels e títulos
-- Cards arredondados (border-radius grande), sombras suaves
-- Modais com backdrop blur e animações de entrada
-- Responsividade para desktop e tablet
+#### 1. Tela de Login (refatorar `Auth.tsx`)
+Adaptar para seguir o design do prototipo:
+- Campo CNPJ da Instituicao (identifica a organizacao)
+- Campo E-mail (em vez de username, ja que usamos Supabase Auth)
+- Campo Senha com toggle de visibilidade
+- Visual com fundo azul #004c99, card arredondado (rounded-[40px]), tipografia bold/uppercase
+- Logo SSVP estilizado
 
+#### 2. Tela de Primeiro Acesso (novo: `SetupScreen.tsx`)
+Fluxo em 2 etapas para configuracao inicial da instituicao:
+- **Etapa 1 - Instituicao**: Tipo de entidade (Obra Unida / Conselho), nome, CNPJ, cidade, conselhos vinculados
+- **Etapa 2 - Administrador**: Nome completo, e-mail, senha, cargo
+- Ao finalizar: cria a organizacao no banco, registra o usuario via Supabase Auth, atribui role "admin"
+- Visual identico ao prototipo (sidebar de progresso, cards arredondados)
+
+#### 3. Pagina de Configuracoes (novo: `Settings.tsx`)
+Modulo com 2 abas:
+- **Aba Instituicao**: Editar dados da organizacao (nome, CNPJ, cidade, conselhos vinculados, tipo de entidade)
+- **Aba Controle de Acesso**: 
+  - Lista de usuarios da organizacao com nome, username, cargo
+  - Formulario para convidar novo usuario (e-mail, nome, cargo, papel)
+  - Acoes: alterar senha, excluir usuario
+  - O admin padrao nao pode ser excluido
+
+#### 4. Layout/Sidebar (atualizar `AppSidebar.tsx` e `AppLayout.tsx`)
+- Exibir nome da instituicao e informacoes do conselho vinculado na sidebar
+- Adicionar item "Configuracoes" no menu (habilitado)
+- Exibir nome do usuario logado no footer da sidebar
+
+#### 5. Fluxo de Navegacao (atualizar `App.tsx`)
+- Rota `/auth` - Login
+- Rota `/setup` - Primeiro acesso (acessivel apenas quando nao ha organizacao configurada)
+- Rota `/configuracoes` - Pagina de configuracoes
+- Rota `/triagens` - Modulo de triagens (ja existe)
+
+### Detalhes Tecnicos
+
+#### Banco de Dados (Migrations)
+```text
+-- Adicionar campos a organizations
+ALTER TABLE organizations ADD COLUMN cnpj text;
+ALTER TABLE organizations ADD COLUMN city text;
+ALTER TABLE organizations ADD COLUMN central_council_name text;
+ALTER TABLE organizations ADD COLUMN metropolitan_council_name text;
+
+-- Adicionar campo a profiles
+ALTER TABLE profiles ADD COLUMN role_title text;
+```
+
+#### Fluxo de Setup (Edge Function ou cliente direto)
+O setup criara:
+1. Registro do usuario via `supabase.auth.signUp()`
+2. A organizacao via insert na tabela `organizations`
+3. O vinculo via insert na tabela `user_roles` com role = 'admin'
+4. O profile sera criado automaticamente pelo trigger existente `handle_new_user`
+
+**Problema**: O insert em `organizations` requer que o usuario ja pertenca a org (RLS). Solucao: criar uma **edge function `setup-organization`** que usa service_role para:
+- Criar a organizacao
+- Criar o user_role vinculando o usuario recem-criado
+
+#### Login com CNPJ
+O login funcionara em 2 passos:
+1. Autenticar via Supabase Auth (email + senha)
+2. Apos autenticacao, verificar se o CNPJ informado corresponde a organizacao do usuario
+3. Se nao corresponder, exibir erro e fazer signOut
+
+#### Convite de Usuarios (Configuracoes)
+Para adicionar novos usuarios a organizacao:
+- Edge function `invite-user` que usa service_role para criar o usuario e vincular a org
+- Ou: registrar o usuario normalmente e associar via CNPJ no login
+
+### Sequencia de Implementacao
+1. Migration: adicionar campos no banco
+2. Edge function: `setup-organization`
+3. Tela de Setup (`/setup`)
+4. Refatorar tela de Login com design do prototipo
+5. Pagina de Configuracoes
+6. Atualizar Sidebar e Layout
+7. Atualizar rotas no App.tsx
