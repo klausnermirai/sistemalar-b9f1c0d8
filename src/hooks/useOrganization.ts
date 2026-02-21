@@ -8,6 +8,7 @@ interface Organization {
   org_type: string;
   cnpj: string | null;
   city: string | null;
+  state: string | null;
   central_council_name: string | null;
   metropolitan_council_name: string | null;
 }
