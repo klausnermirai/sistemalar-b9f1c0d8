@@ -1,63 +1,77 @@
 
 
-## Plano de Correcoes e Melhorias
+## Revisao Estrutural para Crescimento Futuro
 
-### 1. Corrigir "Email not confirmed"
+### Diagnostico Atual
 
-**Causa raiz:** O Supabase Auth exige confirmacao de e-mail por padrao. Quando o usuario e criado via `signUp()` no Setup ou via `admin.createUser()` no invite-user, o campo `confirmed_at` fica vazio, bloqueando o login.
+A estrutura do banco de dados ja esta bem encaminhada para multi-tenancy:
 
-**Solucao:**
-- Habilitar auto-confirm de e-mail nas configuracoes de autenticacao do backend (configure-auth tool)
-- A edge function `invite-user` ja passa `email_confirm: true` no `admin.createUser()`, o que esta correto
-- O `signUp()` no Setup tambem passara a funcionar automaticamente com auto-confirm habilitado
+- Tabela `organizations` com `org_type` (enum com 4 niveis hierarquicos) e `parent_id` (auto-referencia)
+- Isolamento por `organization_id` em `candidates` e `interview_data`
+- RLS funcionando via `user_belongs_to_org()`
+- Campos `central_council_name` e `metropolitan_council_name` como texto livre (nao sao referencias reais)
 
-### 2. Proteger /setup com credenciais de desenvolvedor
+### O que precisa mudar
 
-**Solucao:** Criar um "Dev Gate" na propria tela `/setup`:
+| Alteracao | Motivo |
+|-----------|--------|
+| Adicionar coluna `state` (Estado/UF) em `organizations` | Permitir filtros geograficos e agrupamentos futuros |
+| Adicionar `UNIQUE` constraint no `cnpj` | Evitar duplicatas; CNPJ e o identificador unico de cada instituicao |
+| Criar indice em `parent_id` | Performance para consultas hierarquicas futuras |
+| Criar indice em `org_type` | Performance para filtros por tipo de entidade |
 
-- Ao acessar `/setup`, o usuario ve primeiro um modal pedindo credenciais do desenvolvedor
-- As credenciais sao verificadas via uma edge function `verify-dev-access` que consulta secrets do backend (`DEV_SETUP_USER` e `DEV_SETUP_PASS`)
-- Se corretas, libera o wizard de configuracao; se erradas, bloqueia com mensagem de erro
-- Nenhuma credencial fica hardcoded no frontend
+### O que NAO sera alterado (e por que)
 
-**Implementacao tecnica:**
-- Criar 2 secrets: `DEV_SETUP_USER` e `DEV_SETUP_PASS`
-- Criar edge function `verify-dev-access` que recebe username/password e compara com os secrets
-- No `Setup.tsx`, adicionar estado `devAuthenticated` e um modal inicial de autenticacao dev
-- So apos autenticacao dev bem-sucedida o wizard de configuracao e exibido
+- **`central_council_name` e `metropolitan_council_name`**: Esses campos texto serao mantidos. Hoje servem como registro informativo. No futuro, quando conselhos forem cadastrados no sistema, o `parent_id` assumira o papel de vinculo real e esses campos poderao ser migrados ou descontinuados sem perda de dados.
+- **RLS policies**: Continuam filtrando apenas pela organizacao do usuario. A expansao para conselhos verem subordinados via `parent_id` sera feita em etapa futura com funcao `get_subordinate_org_ids()`.
+- **Tabelas `candidates` e `interview_data`**: Estrutura permanece igual, ja preparada com `organization_id`.
 
-### 3. Multi-instituicao (CNPJ como tenant)
+### Migration SQL
 
-**O que ja esta implementado e funcionando:**
-- Todas as tabelas relevantes (`candidates`, `interview_data`) ja usam `organization_id` como tenant
-- RLS ja filtra por `user_belongs_to_org(auth.uid(), organization_id)` em todas as tabelas
-- Login ja valida CNPJ contra a organizacao do usuario
-- Edge functions ja isolam dados por organizacao
-- Instituicao A ja nao ve dados da instituicao B
+```text
+-- 1. Adicionar campo Estado (UF) na tabela organizations
+ALTER TABLE public.organizations 
+  ADD COLUMN IF NOT EXISTS state text;
 
-**O que falta para hierarquia de conselhos (visao futura):**
-- Hoje o campo `parent_id` na tabela `organizations` existe mas nao e utilizado
-- Para conselhos verem dados de subordinados, sera necessario no futuro:
-  - Popular `parent_id` vinculando obras unidas aos seus conselhos centrais, e assim por diante
-  - Criar funcao RLS `get_subordinate_org_ids(org_id)` que percorre a arvore hierarquica
-  - Ajustar as policies de SELECT para incluir organizacoes subordinadas
-- **Isso nao sera implementado agora** pois requer modelagem mais robusta e testes com dados reais
+-- 2. Garantir unicidade do CNPJ (ignorando nulos)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_cnpj_unique 
+  ON public.organizations(cnpj) 
+  WHERE cnpj IS NOT NULL;
 
-### Sequencia de Implementacao
+-- 3. Indice para consultas hierarquicas por parent_id
+CREATE INDEX IF NOT EXISTS idx_organizations_parent_id 
+  ON public.organizations(parent_id) 
+  WHERE parent_id IS NOT NULL;
 
-1. Habilitar auto-confirm de e-mail no backend
-2. Solicitar ao usuario os secrets `DEV_SETUP_USER` e `DEV_SETUP_PASS`
-3. Criar edge function `verify-dev-access`
-4. Atualizar `Setup.tsx` com modal de autenticacao dev
-5. Testar fluxo completo: setup -> login -> acesso aos dados
+-- 4. Indice para filtros por tipo de organizacao
+CREATE INDEX IF NOT EXISTS idx_organizations_org_type 
+  ON public.organizations(org_type);
+```
 
-### Resumo do que muda
+### Atualizacoes no Frontend
+
+1. **Setup.tsx**: Adicionar campo "Estado (UF)" no formulario da Etapa 1, visivel para todos os tipos de entidade
+2. **Settings.tsx**: Adicionar campo "Estado" na aba de dados da instituicao
+3. **Edge function `setup-organization`**: Aceitar e salvar o novo campo `state`
+
+### Atualizacoes no Codigo
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| Configuracao de auth | Habilitar auto-confirm |
-| `supabase/functions/verify-dev-access/index.ts` | Nova edge function |
-| `supabase/config.toml` | Registrar nova funcao |
-| `src/pages/Setup.tsx` | Adicionar modal Dev Gate |
-| Secrets | Adicionar DEV_SETUP_USER e DEV_SETUP_PASS |
+| Migration SQL | Adicionar `state`, indice unico em `cnpj`, indices em `parent_id` e `org_type` |
+| `src/pages/Setup.tsx` | Novo campo "Estado (UF)" na Etapa 1 |
+| `src/pages/Settings.tsx` | Novo campo "Estado" na edicao de dados da instituicao |
+| `supabase/functions/setup-organization/index.ts` | Aceitar campo `state` no body |
+
+### Visao de Crescimento Futuro (referencia, sem implementacao agora)
+
+Quando for o momento de ativar a hierarquia:
+
+1. Cadastrar conselhos como organizacoes com seus respectivos `org_type`
+2. Popular `parent_id` vinculando obras a conselhos centrais, centrais a metropolitanos, etc.
+3. Criar funcao `get_subordinate_org_ids(org_id)` que percorre a arvore
+4. Ajustar RLS de SELECT para incluir `organization_id IN (get_subordinate_org_ids(...))`
+5. Migrar dados de `central_council_name`/`metropolitan_council_name` para referencias reais via `parent_id`
+
+A estrutura proposta suporta tudo isso sem necessidade de mudancas destrutivas.
 
