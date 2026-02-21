@@ -33,6 +33,7 @@ interface OrgData {
   org_type: string;
   cnpj: string | null;
   city: string | null;
+  state: string | null;
   central_council_name: string | null;
   metropolitan_council_name: string | null;
 }
@@ -60,6 +61,7 @@ export default function Settings() {
   const [orgName, setOrgName] = useState("");
   const [orgCnpj, setOrgCnpj] = useState("");
   const [orgCity, setOrgCity] = useState("");
+  const [orgState, setOrgState] = useState("");
   const [orgCentral, setOrgCentral] = useState("");
   const [orgMetro, setOrgMetro] = useState("");
 
@@ -88,6 +90,7 @@ export default function Settings() {
       setOrgName(data.name);
       setOrgCnpj(data.cnpj || "");
       setOrgCity(data.city || "");
+      setOrgState((data as any).state || "");
       setOrgCentral(data.central_council_name || "");
       setOrgMetro(data.metropolitan_council_name || "");
     }
@@ -128,6 +131,7 @@ export default function Settings() {
           name: orgName,
           cnpj: orgCnpj.replace(/\D/g, "") || null,
           city: orgCity || null,
+          state: orgState || null,
           central_council_name: orgCentral || null,
           metropolitan_council_name: orgMetro || null,
         })
@@ -233,6 +237,11 @@ export default function Settings() {
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase tracking-wider">CNPJ</Label>
                   <Input value={orgCnpj} onChange={(e) => setOrgCnpj(e.target.value)} className="h-11 rounded-xl" disabled={!isAdmin} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider">Estado (UF)</Label>
+                  <Input value={orgState} onChange={(e) => setOrgState(e.target.value)} className="h-11 rounded-xl" disabled={!isAdmin} maxLength={2} placeholder="Ex: SP" />
                 </div>
 
                 <div className="space-y-2">

@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     const userId = claimsData.claims.sub;
 
     const body = await req.json();
-    const { org_name, org_type, cnpj, city, central_council_name, metropolitan_council_name, role_title } = body;
+    const { org_name, org_type, cnpj, city, state, central_council_name, metropolitan_council_name, role_title } = body;
 
     if (!org_name || !org_type || !cnpj) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -90,6 +90,7 @@ Deno.serve(async (req) => {
         org_type,
         cnpj,
         city: city || null,
+        state: state || null,
         central_council_name: central_council_name || null,
         metropolitan_council_name: metropolitan_council_name || null,
       })

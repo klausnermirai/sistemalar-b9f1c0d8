@@ -45,6 +45,7 @@ export default function Setup() {
   const [city, setCity] = useState("");
   const [centralCouncil, setCentralCouncil] = useState("");
   const [metroCouncil, setMetroCouncil] = useState("");
+  const [state, setState] = useState("");
 
   // Step 2 - Admin
   const [fullName, setFullName] = useState("");
@@ -122,6 +123,7 @@ export default function Setup() {
           org_type: orgType,
           cnpj: cleanCnpj,
           city,
+          state,
           central_council_name: centralCouncil,
           metropolitan_council_name: metroCouncil,
           role_title: roleTitle,
@@ -294,6 +296,11 @@ export default function Setup() {
                     className="h-11 rounded-xl"
                     required
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider">Estado (UF)</Label>
+                  <Input value={state} onChange={(e) => setState(e.target.value)} placeholder="Ex: SP, RJ, MG" className="h-11 rounded-xl" maxLength={2} />
                 </div>
 
                 {(orgType === "obra_unida" || orgType === "conselho_central") && (

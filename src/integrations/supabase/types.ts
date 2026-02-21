@@ -143,6 +143,7 @@ export type Database = {
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
           parent_id: string | null
+          state: string | null
         }
         Insert: {
           central_council_name?: string | null
@@ -154,6 +155,7 @@ export type Database = {
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
           parent_id?: string | null
+          state?: string | null
         }
         Update: {
           central_council_name?: string | null
@@ -165,6 +167,7 @@ export type Database = {
           name?: string
           org_type?: Database["public"]["Enums"]["org_type"]
           parent_id?: string | null
+          state?: string | null
         }
         Relationships: [
           {
