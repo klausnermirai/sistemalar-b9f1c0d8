@@ -5,8 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Heart, Building2, UserCog, Check } from "lucide-react";
+import { Heart, Building2, UserCog, Check, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 type OrgType = "obra_unida" | "conselho_central" | "conselho_metropolitano" | "conselho_nacional";
 
@@ -21,6 +28,12 @@ export default function Setup() {
   const { user, loading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Dev Gate state
+  const [devAuthenticated, setDevAuthenticated] = useState(false);
+  const [devUser, setDevUser] = useState("");
+  const [devPass, setDevPass] = useState("");
+  const [devLoading, setDevLoading] = useState(false);
 
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -51,6 +64,29 @@ export default function Setup() {
       .replace(/(\d{4})(\d)/, "$1-$2");
   }
 
+  async function handleDevAuth(e: React.FormEvent) {
+    e.preventDefault();
+    setDevLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-dev-access", {
+        body: { username: devUser, password: devPass },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      if (data?.success) {
+        setDevAuthenticated(true);
+      }
+    } catch (err: any) {
+      toast({
+        title: "Acesso negado",
+        description: err.message || "Credenciais inválidas.",
+        variant: "destructive",
+      });
+    } finally {
+      setDevLoading(false);
+    }
+  }
+
   async function handleFinish(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -58,7 +94,6 @@ export default function Setup() {
       const cleanCnpj = cnpj.replace(/\D/g, "");
       if (cleanCnpj.length !== 14) throw new Error("CNPJ inválido");
 
-      // 1. Sign up user
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -69,20 +104,18 @@ export default function Setup() {
       });
       if (signUpError) throw signUpError;
 
-      // 2. Get session (auto-confirm must be on, otherwise user needs to verify)
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
       if (!token) {
         toast({
           title: "Conta criada!",
-          description: "Verifique seu e-mail para confirmar o cadastro. Após confirmar, faça login.",
+          description: "Faça login para continuar.",
         });
         navigate("/auth");
         return;
       }
 
-      // 3. Call setup-organization edge function
       const { data, error } = await supabase.functions.invoke("setup-organization", {
         body: {
           org_name: orgName,
@@ -118,6 +151,56 @@ export default function Setup() {
     { num: 1, label: "Instituição", icon: Building2 },
     { num: 2, label: "Administrador", icon: UserCog },
   ];
+
+  // Dev Gate modal - always open until authenticated
+  if (!devAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-primary p-6">
+        <Dialog open={true}>
+          <DialogContent className="sm:max-w-md [&>button]:hidden">
+            <DialogHeader>
+              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <ShieldCheck className="h-6 w-6 text-primary" />
+              </div>
+              <DialogTitle className="text-center">Acesso do Desenvolvedor</DialogTitle>
+              <DialogDescription className="text-center">
+                Insira as credenciais de desenvolvedor para acessar a configuração inicial.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleDevAuth} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider">Usuário</Label>
+                <Input
+                  value={devUser}
+                  onChange={(e) => setDevUser(e.target.value)}
+                  className="h-11 rounded-xl"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider">Senha</Label>
+                <Input
+                  type="password"
+                  value={devPass}
+                  onChange={(e) => setDevPass(e.target.value)}
+                  className="h-11 rounded-xl"
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                className="h-11 w-full rounded-xl text-sm font-bold uppercase tracking-wider"
+                disabled={devLoading}
+              >
+                {devLoading ? "Verificando..." : "Acessar"}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-primary">
