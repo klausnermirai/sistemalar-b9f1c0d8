@@ -1,111 +1,63 @@
 
 
-## Estrutura de Acesso e Configuracao - Adaptando o Prototipo
+## Plano de Correcoes e Melhorias
 
-### Objetivo
-Implementar o fluxo de configuracao e acesso do prototipo no sistema atual, adaptando para usar o backend com autenticacao real (Supabase Auth) em vez de localStorage. Inclui: tela de primeiro acesso (Setup), login com identificacao da instituicao, configuracoes da instituicao e controle de acesso de usuarios.
+### 1. Corrigir "Email not confirmed"
 
----
+**Causa raiz:** O Supabase Auth exige confirmacao de e-mail por padrao. Quando o usuario e criado via `signUp()` no Setup ou via `admin.createUser()` no invite-user, o campo `confirmed_at` fica vazio, bloqueando o login.
 
-### O que ja existe (e sera aproveitado)
-- Tabela `organizations` com hierarquia (parent_id) e tipos (conselho_nacional, metropolitano, central, obra_unida)
-- Tabela `user_roles` vinculando usuarios a organizacoes com papeis (admin, coordinator, social_worker, viewer)
-- Tabela `profiles` com dados do usuario
-- Autenticacao via Supabase Auth (email/senha)
-- Funcoes RLS: `user_belongs_to_org`, `has_role`, `get_user_organization_id`
+**Solucao:**
+- Habilitar auto-confirm de e-mail nas configuracoes de autenticacao do backend (configure-auth tool)
+- A edge function `invite-user` ja passa `email_confirm: true` no `admin.createUser()`, o que esta correto
+- O `signUp()` no Setup tambem passara a funcionar automaticamente com auto-confirm habilitado
 
-### Mudancas no Banco de Dados
+### 2. Proteger /setup com credenciais de desenvolvedor
 
-1. **Adicionar campos na tabela `organizations`**:
-   - `cnpj` (text, nullable) - identificador da instituicao no login
-   - `city` (text, nullable) - cidade da obra unida
-   - `central_council_name` (text, nullable) - nome do conselho central vinculado (texto livre por enquanto)
-   - `metropolitan_council_name` (text, nullable) - nome do conselho metropolitano vinculado
+**Solucao:** Criar um "Dev Gate" na propria tela `/setup`:
 
-2. **Adicionar campo na tabela `profiles`**:
-   - `role_title` (text, nullable) - cargo/funcao na instituicao (ex: "Gestor(a)", "Assistente Social")
+- Ao acessar `/setup`, o usuario ve primeiro um modal pedindo credenciais do desenvolvedor
+- As credenciais sao verificadas via uma edge function `verify-dev-access` que consulta secrets do backend (`DEV_SETUP_USER` e `DEV_SETUP_PASS`)
+- Se corretas, libera o wizard de configuracao; se erradas, bloqueia com mensagem de erro
+- Nenhuma credencial fica hardcoded no frontend
 
-3. **Adicionar campo na tabela `user_roles`**:
-   - `is_primary` (boolean, default true) - para identificar a organizacao principal do usuario
+**Implementacao tecnica:**
+- Criar 2 secrets: `DEV_SETUP_USER` e `DEV_SETUP_PASS`
+- Criar edge function `verify-dev-access` que recebe username/password e compara com os secrets
+- No `Setup.tsx`, adicionar estado `devAuthenticated` e um modal inicial de autenticacao dev
+- So apos autenticacao dev bem-sucedida o wizard de configuracao e exibido
 
-### Mudancas no Frontend
+### 3. Multi-instituicao (CNPJ como tenant)
 
-#### 1. Tela de Login (refatorar `Auth.tsx`)
-Adaptar para seguir o design do prototipo:
-- Campo CNPJ da Instituicao (identifica a organizacao)
-- Campo E-mail (em vez de username, ja que usamos Supabase Auth)
-- Campo Senha com toggle de visibilidade
-- Visual com fundo azul #004c99, card arredondado (rounded-[40px]), tipografia bold/uppercase
-- Logo SSVP estilizado
+**O que ja esta implementado e funcionando:**
+- Todas as tabelas relevantes (`candidates`, `interview_data`) ja usam `organization_id` como tenant
+- RLS ja filtra por `user_belongs_to_org(auth.uid(), organization_id)` em todas as tabelas
+- Login ja valida CNPJ contra a organizacao do usuario
+- Edge functions ja isolam dados por organizacao
+- Instituicao A ja nao ve dados da instituicao B
 
-#### 2. Tela de Primeiro Acesso (novo: `SetupScreen.tsx`)
-Fluxo em 2 etapas para configuracao inicial da instituicao:
-- **Etapa 1 - Instituicao**: Tipo de entidade (Obra Unida / Conselho), nome, CNPJ, cidade, conselhos vinculados
-- **Etapa 2 - Administrador**: Nome completo, e-mail, senha, cargo
-- Ao finalizar: cria a organizacao no banco, registra o usuario via Supabase Auth, atribui role "admin"
-- Visual identico ao prototipo (sidebar de progresso, cards arredondados)
-
-#### 3. Pagina de Configuracoes (novo: `Settings.tsx`)
-Modulo com 2 abas:
-- **Aba Instituicao**: Editar dados da organizacao (nome, CNPJ, cidade, conselhos vinculados, tipo de entidade)
-- **Aba Controle de Acesso**: 
-  - Lista de usuarios da organizacao com nome, username, cargo
-  - Formulario para convidar novo usuario (e-mail, nome, cargo, papel)
-  - Acoes: alterar senha, excluir usuario
-  - O admin padrao nao pode ser excluido
-
-#### 4. Layout/Sidebar (atualizar `AppSidebar.tsx` e `AppLayout.tsx`)
-- Exibir nome da instituicao e informacoes do conselho vinculado na sidebar
-- Adicionar item "Configuracoes" no menu (habilitado)
-- Exibir nome do usuario logado no footer da sidebar
-
-#### 5. Fluxo de Navegacao (atualizar `App.tsx`)
-- Rota `/auth` - Login
-- Rota `/setup` - Primeiro acesso (acessivel apenas quando nao ha organizacao configurada)
-- Rota `/configuracoes` - Pagina de configuracoes
-- Rota `/triagens` - Modulo de triagens (ja existe)
-
-### Detalhes Tecnicos
-
-#### Banco de Dados (Migrations)
-```text
--- Adicionar campos a organizations
-ALTER TABLE organizations ADD COLUMN cnpj text;
-ALTER TABLE organizations ADD COLUMN city text;
-ALTER TABLE organizations ADD COLUMN central_council_name text;
-ALTER TABLE organizations ADD COLUMN metropolitan_council_name text;
-
--- Adicionar campo a profiles
-ALTER TABLE profiles ADD COLUMN role_title text;
-```
-
-#### Fluxo de Setup (Edge Function ou cliente direto)
-O setup criara:
-1. Registro do usuario via `supabase.auth.signUp()`
-2. A organizacao via insert na tabela `organizations`
-3. O vinculo via insert na tabela `user_roles` com role = 'admin'
-4. O profile sera criado automaticamente pelo trigger existente `handle_new_user`
-
-**Problema**: O insert em `organizations` requer que o usuario ja pertenca a org (RLS). Solucao: criar uma **edge function `setup-organization`** que usa service_role para:
-- Criar a organizacao
-- Criar o user_role vinculando o usuario recem-criado
-
-#### Login com CNPJ
-O login funcionara em 2 passos:
-1. Autenticar via Supabase Auth (email + senha)
-2. Apos autenticacao, verificar se o CNPJ informado corresponde a organizacao do usuario
-3. Se nao corresponder, exibir erro e fazer signOut
-
-#### Convite de Usuarios (Configuracoes)
-Para adicionar novos usuarios a organizacao:
-- Edge function `invite-user` que usa service_role para criar o usuario e vincular a org
-- Ou: registrar o usuario normalmente e associar via CNPJ no login
+**O que falta para hierarquia de conselhos (visao futura):**
+- Hoje o campo `parent_id` na tabela `organizations` existe mas nao e utilizado
+- Para conselhos verem dados de subordinados, sera necessario no futuro:
+  - Popular `parent_id` vinculando obras unidas aos seus conselhos centrais, e assim por diante
+  - Criar funcao RLS `get_subordinate_org_ids(org_id)` que percorre a arvore hierarquica
+  - Ajustar as policies de SELECT para incluir organizacoes subordinadas
+- **Isso nao sera implementado agora** pois requer modelagem mais robusta e testes com dados reais
 
 ### Sequencia de Implementacao
-1. Migration: adicionar campos no banco
-2. Edge function: `setup-organization`
-3. Tela de Setup (`/setup`)
-4. Refatorar tela de Login com design do prototipo
-5. Pagina de Configuracoes
-6. Atualizar Sidebar e Layout
-7. Atualizar rotas no App.tsx
+
+1. Habilitar auto-confirm de e-mail no backend
+2. Solicitar ao usuario os secrets `DEV_SETUP_USER` e `DEV_SETUP_PASS`
+3. Criar edge function `verify-dev-access`
+4. Atualizar `Setup.tsx` com modal de autenticacao dev
+5. Testar fluxo completo: setup -> login -> acesso aos dados
+
+### Resumo do que muda
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| Configuracao de auth | Habilitar auto-confirm |
+| `supabase/functions/verify-dev-access/index.ts` | Nova edge function |
+| `supabase/config.toml` | Registrar nova funcao |
+| `src/pages/Setup.tsx` | Adicionar modal Dev Gate |
+| Secrets | Adicionar DEV_SETUP_USER e DEV_SETUP_PASS |
+
