@@ -38,7 +38,8 @@ export function useCandidateCounts() {
   return useQuery({
     queryKey: ["candidate-counts", userOrgId],
     queryFn: async () => {
-      if (!userOrgId) return { agendamento: 0, entrevista: 0, lista_espera: 0, acolhido: 0, arquivado: 0 };
+      const defaults = { agendamento: 0, entrevista: 0, lista_espera: 0, decisao_diretoria: 0, avaliacao_medica: 0, integracao: 0, acolhido: 0, arquivado: 0 };
+      if (!userOrgId) return defaults;
       const { data, error } = await supabase
         .from("candidates")
         .select("stage")
@@ -46,9 +47,10 @@ export function useCandidateCounts() {
 
       if (error) throw error;
 
-      const counts = { agendamento: 0, entrevista: 0, lista_espera: 0, acolhido: 0, arquivado: 0 };
+      const counts = { ...defaults };
       data?.forEach((c) => {
-        counts[c.stage as keyof typeof counts]++;
+        const stage = c.stage as keyof typeof counts;
+        if (stage in counts) counts[stage]++;
       });
       return counts;
     },

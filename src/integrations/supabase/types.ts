@@ -16,13 +16,20 @@ export type Database = {
     Tables: {
       candidates: {
         Row: {
+          admission_date: string | null
           archive_reason: string | null
           archived_at: string | null
+          board_opinion: string | null
           contact_date: string | null
+          contract_status: string | null
           created_at: string
           created_by: string | null
           elder_name: string
           id: string
+          integration_date: string | null
+          integration_report: string | null
+          medical_opinion: string | null
+          medical_status: string | null
           organization_id: string
           phone: string | null
           priority: Database["public"]["Enums"]["candidate_priority"]
@@ -31,13 +38,20 @@ export type Database = {
           visit_address: string | null
         }
         Insert: {
+          admission_date?: string | null
           archive_reason?: string | null
           archived_at?: string | null
+          board_opinion?: string | null
           contact_date?: string | null
+          contract_status?: string | null
           created_at?: string
           created_by?: string | null
           elder_name: string
           id?: string
+          integration_date?: string | null
+          integration_report?: string | null
+          medical_opinion?: string | null
+          medical_status?: string | null
           organization_id: string
           phone?: string | null
           priority?: Database["public"]["Enums"]["candidate_priority"]
@@ -46,13 +60,20 @@ export type Database = {
           visit_address?: string | null
         }
         Update: {
+          admission_date?: string | null
           archive_reason?: string | null
           archived_at?: string | null
+          board_opinion?: string | null
           contact_date?: string | null
+          contract_status?: string | null
           created_at?: string
           created_by?: string | null
           elder_name?: string
           id?: string
+          integration_date?: string | null
+          integration_report?: string | null
+          medical_opinion?: string | null
+          medical_status?: string | null
           organization_id?: string
           phone?: string | null
           priority?: Database["public"]["Enums"]["candidate_priority"]
@@ -272,6 +293,9 @@ export type Database = {
         | "lista_espera"
         | "acolhido"
         | "arquivado"
+        | "decisao_diretoria"
+        | "avaliacao_medica"
+        | "integracao"
       org_type:
         | "conselho_nacional"
         | "conselho_metropolitano"
@@ -412,6 +436,9 @@ export const Constants = {
         "lista_espera",
         "acolhido",
         "arquivado",
+        "decisao_diretoria",
+        "avaliacao_medica",
+        "integracao",
       ],
       org_type: [
         "conselho_nacional",
