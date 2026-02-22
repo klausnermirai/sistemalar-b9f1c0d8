@@ -1,77 +1,94 @@
 
+## Novas Abas no Fluxo de Triagem
 
-## Revisao Estrutural para Crescimento Futuro
+### Resumo
 
-### Diagnostico Atual
+Adicionar 4 novas abas funcionais ao fluxo de triagem, baseadas no prototipo do GitHub:
 
-A estrutura do banco de dados ja esta bem encaminhada para multi-tenancy:
+1. **Fila de Espera** - Candidatos aptos aguardando vaga (ativar a aba ja existente)
+2. **Diretoria** - Parecer oficial da diretoria em ata de reuniao
+3. **Parecer Medico** - Avaliacao clinica (Apto/Inapto) com observacoes
+4. **Integracao** - Contratos, data de integracao, relatorio e acolhimento final
 
-- Tabela `organizations` com `org_type` (enum com 4 niveis hierarquicos) e `parent_id` (auto-referencia)
-- Isolamento por `organization_id` em `candidates` e `interview_data`
-- RLS funcionando via `user_belongs_to_org()`
-- Campos `central_council_name` e `metropolitan_council_name` como texto livre (nao sao referencias reais)
-
-### O que precisa mudar
-
-| Alteracao | Motivo |
-|-----------|--------|
-| Adicionar coluna `state` (Estado/UF) em `organizations` | Permitir filtros geograficos e agrupamentos futuros |
-| Adicionar `UNIQUE` constraint no `cnpj` | Evitar duplicatas; CNPJ e o identificador unico de cada instituicao |
-| Criar indice em `parent_id` | Performance para consultas hierarquicas futuras |
-| Criar indice em `org_type` | Performance para filtros por tipo de entidade |
-
-### O que NAO sera alterado (e por que)
-
-- **`central_council_name` e `metropolitan_council_name`**: Esses campos texto serao mantidos. Hoje servem como registro informativo. No futuro, quando conselhos forem cadastrados no sistema, o `parent_id` assumira o papel de vinculo real e esses campos poderao ser migrados ou descontinuados sem perda de dados.
-- **RLS policies**: Continuam filtrando apenas pela organizacao do usuario. A expansao para conselhos verem subordinados via `parent_id` sera feita em etapa futura com funcao `get_subordinate_org_ids()`.
-- **Tabelas `candidates` e `interview_data`**: Estrutura permanece igual, ja preparada com `organization_id`.
-
-### Migration SQL
+### Fluxo Completo das Etapas
 
 ```text
--- 1. Adicionar campo Estado (UF) na tabela organizations
-ALTER TABLE public.organizations 
-  ADD COLUMN IF NOT EXISTS state text;
-
--- 2. Garantir unicidade do CNPJ (ignorando nulos)
-CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_cnpj_unique 
-  ON public.organizations(cnpj) 
-  WHERE cnpj IS NOT NULL;
-
--- 3. Indice para consultas hierarquicas por parent_id
-CREATE INDEX IF NOT EXISTS idx_organizations_parent_id 
-  ON public.organizations(parent_id) 
-  WHERE parent_id IS NOT NULL;
-
--- 4. Indice para filtros por tipo de organizacao
-CREATE INDEX IF NOT EXISTS idx_organizations_org_type 
-  ON public.organizations(org_type);
+Agendamento -> Entrevista -> Fila de Espera -> Diretoria -> Parecer Medico -> Integracao -> Acolhido
+                                                                                    |
+                                                                              (qualquer etapa pode -> Arquivado)
 ```
 
-### Atualizacoes no Frontend
+### 1. Migracao de Banco de Dados
 
-1. **Setup.tsx**: Adicionar campo "Estado (UF)" no formulario da Etapa 1, visivel para todos os tipos de entidade
-2. **Settings.tsx**: Adicionar campo "Estado" na aba de dados da instituicao
-3. **Edge function `setup-organization`**: Aceitar e salvar o novo campo `state`
+**Novos valores no enum `candidate_stage`:**
+- `decisao_diretoria`
+- `avaliacao_medica`
+- `integracao`
 
-### Atualizacoes no Codigo
+**Novas colunas na tabela `candidates`:**
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| `board_opinion` | text | Parecer/ata da diretoria |
+| `medical_status` | text | 'favoravel' ou 'desfavoravel' |
+| `medical_opinion` | text | Observacoes medicas |
+| `integration_date` | date | Data da integracao |
+| `integration_report` | text | Relatorio da tarde de experiencia |
+| `contract_status` | text | 'pendente' ou 'assinado' (default: 'pendente') |
+| `admission_date` | date | Data de efetivacao do acolhimento |
+
+### 2. Novos Componentes
+
+| Arquivo | Funcionalidade |
+|---------|---------------|
+| `src/components/triagens/FilaEsperaTab.tsx` | Lista candidatos em `lista_espera`, permite alterar prioridade e enviar para Diretoria |
+| `src/components/triagens/DiretoriaTab.tsx` | Lista candidatos em `decisao_diretoria`, textarea para parecer da ata, envia para Parecer Medico |
+| `src/components/triagens/ParecerMedicoTab.tsx` | Lista candidatos em `avaliacao_medica`, botoes Apto/Inapto, observacoes, envia para Integracao |
+| `src/components/triagens/IntegracaoTab.tsx` | Lista candidatos em `integracao`, data de integracao, status do contrato, relatorio, botao "Acolher" |
+
+Cada aba segue o mesmo padrao das abas existentes: lista de cards com busca, clique para abrir modal de gestao.
+
+### 3. Alteracoes em Arquivos Existentes
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| Migration SQL | Adicionar `state`, indice unico em `cnpj`, indices em `parent_id` e `org_type` |
-| `src/pages/Setup.tsx` | Novo campo "Estado (UF)" na Etapa 1 |
-| `src/pages/Settings.tsx` | Novo campo "Estado" na edicao de dados da instituicao |
-| `supabase/functions/setup-organization/index.ts` | Aceitar campo `state` no body |
+| `src/pages/Triagens.tsx` | Adicionar as 4 novas abas (ativar Lista de Espera, adicionar Diretoria, Parecer Medico, Integracao); remover abas Acolhidos desabilitada |
+| `src/components/triagens/StatusCards.tsx` | Adicionar cards para `decisao_diretoria`, `avaliacao_medica`, `integracao`; ativar todos |
+| `src/components/triagens/EntrevistasTab.tsx` | Ajustar acao de "enviar para fila de espera" (stage `lista_espera`) ao concluir entrevista |
+| `src/hooks/useCandidates.ts` | Adicionar `useCandidateCounts` para os novos stages |
 
-### Visao de Crescimento Futuro (referencia, sem implementacao agora)
+### 4. Funcionalidades por Aba (baseado no prototipo)
 
-Quando for o momento de ativar a hierarquia:
+**Fila de Espera:**
+- Lista de candidatos com prioridade visivel
+- Permite alterar prioridade (Padrao / Social Urgente / Dependencia Duvidosa)
+- Botao "Enviar para Parecer da Diretoria"
+- Opcao de arquivar
 
-1. Cadastrar conselhos como organizacoes com seus respectivos `org_type`
-2. Popular `parent_id` vinculando obras a conselhos centrais, centrais a metropolitanos, etc.
-3. Criar funcao `get_subordinate_org_ids(org_id)` que percorre a arvore
-4. Ajustar RLS de SELECT para incluir `organization_id IN (get_subordinate_org_ids(...))`
-5. Migrar dados de `central_council_name`/`metropolitan_council_name` para referencias reais via `parent_id`
+**Diretoria:**
+- Campo textarea para registrar decisao oficial / ata de reuniao
+- Campo obrigatorio para prosseguir
+- Botao "Encaminhar para Parecer Medico"
+- Opcao de arquivar
 
-A estrutura proposta suporta tudo isso sem necessidade de mudancas destrutivas.
+**Parecer Medico:**
+- Dois botoes: "Apto" e "Inapto"
+- Campo textarea para observacoes medicas
+- Se Apto: botao "Seguir para Integracao"
+- Se Inapto: opcao de arquivar com motivo "Inapto Clinico"
 
+**Integracao:**
+- Campo data da integracao
+- Select status do contrato (Pendente / Assinado)
+- Campo textarea relatorio da integracao
+- Botao "Gerar Relatorio Completo" (abre janela de impressao)
+- Botao "Acolher" (so habilitado quando contrato = assinado)
+- Ao acolher, candidato vai para stage `acolhido` com `admission_date` preenchida
+
+### 5. Sequencia de Implementacao
+
+1. Migration SQL (adicionar enum values + colunas)
+2. Criar os 4 componentes de aba
+3. Atualizar `Triagens.tsx` e `StatusCards.tsx`
+4. Ajustar `EntrevistasTab.tsx` para progressao correta
+5. Atualizar `useCandidates.ts` para contar novos stages
