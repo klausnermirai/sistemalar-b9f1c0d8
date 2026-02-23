@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useCandidates } from "@/hooks/useCandidates";
+import { useCandidates, useUpdateCandidate } from "@/hooks/useCandidates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, User, FileText } from "lucide-react";
+import { Search, User, FileText, ArrowRight } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { InterviewForm } from "./InterviewForm";
+import { toast } from "@/hooks/use-toast";
 
 const priorityLabels: Record<string, string> = {
   padrao: "Padrão",
@@ -22,8 +23,20 @@ const priorityColors: Record<string, string> = {
 
 export function EntrevistasTab() {
   const { data: candidates = [], isLoading } = useCandidates("entrevista");
+  const updateCandidate = useUpdateCandidate();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const handleEvolve = async (id: string) => {
+    try {
+      await updateCandidate.mutateAsync({ id, stage: "lista_espera" });
+      toast({ title: "Candidato enviado para Fila de Espera" });
+      setExpandedId(null);
+    } catch {
+      toast({ title: "Erro ao evoluir candidato", variant: "destructive" });
+    }
+  };
 
   const filtered = candidates.filter((c) =>
     c.elder_name.toLowerCase().includes(search.toLowerCase())
@@ -58,26 +71,37 @@ export function EntrevistasTab() {
             <Card
               key={c.id}
               className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => setSelectedId(c.id)}
+              onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}
             >
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                    <User className="h-5 w-5 text-primary" />
+              <CardContent className="flex flex-col p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                      <User className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-foreground">{c.elder_name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Clique para ver as opções
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-foreground">{c.elder_name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Clique para preencher a ficha de entrevista
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <Badge className={priorityColors[c.priority]}>
+                      {priorityLabels[c.priority]}
+                    </Badge>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge className={priorityColors[c.priority]}>
-                    {priorityLabels[c.priority]}
-                  </Badge>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </div>
+                {expandedId === c.id && (
+                  <div className="flex gap-2 mt-3 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="outline" size="sm" onClick={() => setSelectedId(c.id)}>
+                      <FileText className="h-4 w-4 mr-1" /> Abrir Ficha
+                    </Button>
+                    <Button size="sm" onClick={() => handleEvolve(c.id)}>
+                      <ArrowRight className="h-4 w-4 mr-1" /> Evoluir para Fila de Espera
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
