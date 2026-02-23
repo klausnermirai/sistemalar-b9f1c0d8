@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCandidates, useUpdateCandidate } from "@/hooks/useCandidates";
+import { useInterviewData } from "@/hooks/useInterviewData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ export function IntegracaoTab() {
   const updateCandidate = useUpdateCandidate();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { data: interviewData } = useInterviewData(selectedId);
   const [integrationDate, setIntegrationDate] = useState("");
   const [contractStatus, setContractStatus] = useState("pendente");
   const [integrationReport, setIntegrationReport] = useState("");
@@ -49,17 +51,164 @@ export function IntegracaoTab() {
 
   const handlePrintReport = () => {
     if (!selected) return;
+    const c = selected as any;
+    const id = (interviewData?.identification as Record<string, string>) || {};
+    const lg = (interviewData?.legal_guardian as Record<string, string>) || {};
+    const fs = (interviewData?.family_support as Record<string, string>) || {};
+    const fd = (interviewData?.family_detail as any[] ) || [];
+    const ho = (interviewData?.housing as Record<string, string>) || {};
+    const se = (interviewData?.socioeconomic as Record<string, string>) || {};
+    const he = (interviewData?.health as Record<string, string>) || {};
+    const dp = (interviewData?.dependency as Record<string, string>) || {};
+    const ps = (interviewData?.psychosocial as Record<string, string>) || {};
+    const admReason = interviewData?.admission_reason || "";
+    const socOpinion = interviewData?.social_opinion || "";
+
+    const priorityLabels: Record<string, string> = {
+      padrao: "Padrão",
+      social_urgente: "Social Urgente",
+      dependencia_duvidosa: "Dependência Duvidosa",
+    };
+
+    const f = (v: string | null | undefined) => v || "—";
+
+    const familyRows = fd.length > 0
+      ? fd.map((m: any) => `<tr><td>${f(m.nome)}</td><td>${f(m.parentesco)}</td><td>${f(m.idade)}</td><td>${f(m.trabalho)}</td><td>${f(m.renda)}</td></tr>`).join("")
+      : `<tr><td colspan="5" style="text-align:center;">Nenhum familiar cadastrado</td></tr>`;
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
     printWindow.document.write(`
-      <html><head><title>Relatório - ${selected.elder_name}</title>
-      <style>body{font-family:sans-serif;padding:2rem;} h1{font-size:1.5rem;} .field{margin:1rem 0;} .label{font-weight:bold;color:#555;} .value{margin-top:0.25rem;}</style></head>
+      <html><head><title>Relatório Completo - ${selected.elder_name}</title>
+      <style>
+        body{font-family:sans-serif;padding:2rem;color:#333;max-width:800px;margin:0 auto;}
+        h1{font-size:1.4rem;text-align:center;border-bottom:2px solid #333;padding-bottom:0.5rem;}
+        h2{font-size:1rem;background:#f0f0f0;padding:0.4rem 0.6rem;margin:1.5rem 0 0.5rem;border-left:4px solid #333;}
+        .field{margin:0.4rem 0;} .label{font-weight:bold;color:#555;display:inline;} .value{display:inline;margin-left:0.3rem;}
+        .grid{display:grid;grid-template-columns:1fr 1fr;gap:0.3rem 1.5rem;}
+        table{width:100%;border-collapse:collapse;margin:0.5rem 0;}
+        th,td{border:1px solid #ccc;padding:0.3rem 0.5rem;text-align:left;font-size:0.85rem;}
+        th{background:#f5f5f5;}
+        .text-block{white-space:pre-wrap;background:#fafafa;padding:0.5rem;border:1px solid #eee;border-radius:4px;min-height:2rem;}
+        @media print{body{padding:1rem;} h2{break-after:avoid;}}
+      </style></head>
       <body>
-        <h1>Relatório de Integração</h1>
-        <div class="field"><div class="label">Candidato</div><div class="value">${selected.elder_name}</div></div>
-        <div class="field"><div class="label">Data de Integração</div><div class="value">${integrationDate || "Não definida"}</div></div>
-        <div class="field"><div class="label">Status do Contrato</div><div class="value">${contractStatus === "assinado" ? "Assinado" : "Pendente"}</div></div>
-        <div class="field"><div class="label">Relatório</div><div class="value">${integrationReport || "—"}</div></div>
+        <h1>Relatório Completo de Triagem</h1>
+
+        <h2>1. Dados do Candidato</h2>
+        <div class="grid">
+          <div class="field"><span class="label">Nome:</span> <span class="value">${f(selected.elder_name)}</span></div>
+          <div class="field"><span class="label">Telefone:</span> <span class="value">${f(c.phone)}</span></div>
+        </div>
+
+        <h2>2. Primeiro Contato</h2>
+        <div class="grid">
+          <div class="field"><span class="label">Data do Contato:</span> <span class="value">${f(c.contact_date)}</span></div>
+          <div class="field"><span class="label">Endereço de Visita:</span> <span class="value">${f(c.visit_address)}</span></div>
+        </div>
+
+        <h2>3. Ficha da Entrevista Social</h2>
+
+        <h2 style="font-size:0.9rem;">3.1 Identificação do Idoso</h2>
+        <div class="grid">
+          <div class="field"><span class="label">Nome Completo:</span> <span class="value">${f(id.nome)}</span></div>
+          <div class="field"><span class="label">Data Nascimento:</span> <span class="value">${f(id.nascimento)}</span></div>
+          <div class="field"><span class="label">Sexo:</span> <span class="value">${f(id.sexo)}</span></div>
+          <div class="field"><span class="label">Estado Civil:</span> <span class="value">${f(id.estado_civil)}</span></div>
+          <div class="field"><span class="label">RG:</span> <span class="value">${f(id.rg)}</span></div>
+          <div class="field"><span class="label">CPF:</span> <span class="value">${f(id.cpf)}</span></div>
+          <div class="field"><span class="label">Telefone:</span> <span class="value">${f(id.telefone)}</span></div>
+          <div class="field"><span class="label">Endereço:</span> <span class="value">${f(id.endereco)}</span></div>
+        </div>
+
+        <h2 style="font-size:0.9rem;">3.2 Responsável Legal / Familiar</h2>
+        <div class="grid">
+          <div class="field"><span class="label">Nome:</span> <span class="value">${f(lg.nome)}</span></div>
+          <div class="field"><span class="label">Parentesco:</span> <span class="value">${f(lg.parentesco)}</span></div>
+          <div class="field"><span class="label">Telefone:</span> <span class="value">${f(lg.telefone)}</span></div>
+          <div class="field"><span class="label">Endereço:</span> <span class="value">${f(lg.endereco)}</span></div>
+        </div>
+
+        <h2 style="font-size:0.9rem;">3.3 Composição Familiar e Rede de Apoio</h2>
+        <div class="grid">
+          <div class="field"><span class="label">Com quem reside:</span> <span class="value">${f(fs.reside_com)}</span></div>
+          <div class="field"><span class="label">Nº de filhos:</span> <span class="value">${f(fs.num_filhos)}</span></div>
+          <div class="field"><span class="label">Cuidador principal:</span> <span class="value">${f(fs.cuidador)}</span></div>
+          <div class="field"><span class="label">Rede de apoio:</span> <span class="value">${f(fs.rede_apoio)}</span></div>
+        </div>
+
+        <h2 style="font-size:0.9rem;">3.4 Composição Familiar Detalhada</h2>
+        <table>
+          <thead><tr><th>Nome</th><th>Parentesco</th><th>Idade</th><th>Trabalho</th><th>Renda</th></tr></thead>
+          <tbody>${familyRows}</tbody>
+        </table>
+
+        <h2 style="font-size:0.9rem;">3.5 Condições de Moradia</h2>
+        <div class="grid">
+          <div class="field"><span class="label">Tipo de moradia:</span> <span class="value">${f(ho.tipo)}</span></div>
+          <div class="field"><span class="label">Condição do imóvel:</span> <span class="value">${f(ho.condicao)}</span></div>
+          <div class="field"><span class="label">Saneamento:</span> <span class="value">${f(ho.saneamento)}</span></div>
+          <div class="field"><span class="label">Acessibilidade:</span> <span class="value">${f(ho.acessibilidade)}</span></div>
+        </div>
+
+        <h2 style="font-size:0.9rem;">3.6 Situação Socioeconômica</h2>
+        <div class="grid">
+          <div class="field"><span class="label">Fonte de renda:</span> <span class="value">${f(se.fonte_renda)}</span></div>
+          <div class="field"><span class="label">Valor da renda:</span> <span class="value">${f(se.valor_renda)}</span></div>
+          <div class="field"><span class="label">Empréstimos:</span> <span class="value">${f(se.emprestimos)}</span></div>
+          <div class="field"><span class="label">Condição da família:</span> <span class="value">${f(se.condicao_familia)}</span></div>
+        </div>
+
+        <h2 style="font-size:0.9rem;">3.7 Condições de Saúde</h2>
+        <div class="grid">
+          <div class="field"><span class="label">Diagnósticos:</span> <span class="value">${f(he.diagnosticos)}</span></div>
+          <div class="field"><span class="label">Medicação:</span> <span class="value">${f(he.medicacao)}</span></div>
+          <div class="field"><span class="label">Acompanhamento:</span> <span class="value">${f(he.acompanhamento)}</span></div>
+          <div class="field"><span class="label">Cognitivo:</span> <span class="value">${f(he.cognitivo)}</span></div>
+        </div>
+
+        <h2 style="font-size:0.9rem;">3.8 Grau de Dependência</h2>
+        <div class="grid">
+          <div class="field"><span class="label">Higiene:</span> <span class="value">${f(dp.higiene)}</span></div>
+          <div class="field"><span class="label">Alimentação:</span> <span class="value">${f(dp.alimentacao)}</span></div>
+          <div class="field"><span class="label">Locomoção:</span> <span class="value">${f(dp.locomocao)}</span></div>
+          <div class="field"><span class="label">Banheiro:</span> <span class="value">${f(dp.banheiro)}</span></div>
+          <div class="field"><span class="label">Medicação:</span> <span class="value">${f(dp.medicacao)}</span></div>
+        </div>
+
+        <h2 style="font-size:0.9rem;">3.9 Aspectos Psicossociais</h2>
+        <div class="grid">
+          <div class="field"><span class="label">Conflitos familiares:</span> <span class="value">${f(ps.conflitos)}</span></div>
+          <div class="field"><span class="label">Concordância do idoso:</span> <span class="value">${f(ps.concordancia_idoso)}</span></div>
+          <div class="field"><span class="label">Concordância da família:</span> <span class="value">${f(ps.concordancia_familia)}</span></div>
+        </div>
+
+        <h2 style="font-size:0.9rem;">3.10 Motivo da Solicitação do Acolhimento</h2>
+        <div class="text-block">${f(admReason)}</div>
+
+        <h2 style="font-size:0.9rem;">3.11 Parecer Social</h2>
+        <div class="text-block">${f(socOpinion)}</div>
+
+        <h2>4. Fila de Espera</h2>
+        <div class="field"><span class="label">Nível de Prioridade:</span> <span class="value">${priorityLabels[c.priority] || c.priority}</span></div>
+
+        <h2>5. Parecer da Diretoria</h2>
+        <div class="text-block">${f(c.board_opinion)}</div>
+
+        <h2>6. Parecer Médico</h2>
+        <div class="grid">
+          <div class="field"><span class="label">Status:</span> <span class="value">${c.medical_status === "apto" ? "Apto" : c.medical_status === "inapto" ? "Inapto" : f(c.medical_status)}</span></div>
+          <div class="field"><span class="label">Observações:</span> <span class="value">${f(c.medical_opinion)}</span></div>
+        </div>
+
+        <h2>7. Integração</h2>
+        <div class="grid">
+          <div class="field"><span class="label">Data da Integração:</span> <span class="value">${f(integrationDate)}</span></div>
+          <div class="field"><span class="label">Status do Contrato:</span> <span class="value">${contractStatus === "assinado" ? "Assinado" : "Pendente"}</span></div>
+        </div>
+        <div class="field" style="margin-top:0.5rem;"><span class="label">Relatório/Observações:</span></div>
+        <div class="text-block">${f(integrationReport)}</div>
+
       </body></html>
     `);
     printWindow.document.close();
