@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useResidents, Resident } from "@/hooks/useResidents";
 import { ResidentList } from "@/components/residentes/ResidentList";
 import { ResidentForm } from "@/components/residentes/ResidentForm";
+import { ImportResidents } from "@/components/residentes/ImportResidents";
 
 export default function Residentes() {
-  const { data: residents = [], isLoading } = useResidents();
+  const { data: residents = [], isLoading, refetch } = useResidents();
   const [selectedResident, setSelectedResident] = useState<Resident | null>(null);
   const [showForm, setShowForm] = useState(false);
 
@@ -21,13 +22,16 @@ export default function Residentes() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold uppercase tracking-wide text-foreground">
-          Residentes
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Gerencie os residentes da instituição
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold uppercase tracking-wide text-foreground">
+            Residentes
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Gerencie os residentes da instituição
+          </p>
+        </div>
+        <ImportResidents onDone={() => refetch()} />
       </div>
 
       <ResidentList
