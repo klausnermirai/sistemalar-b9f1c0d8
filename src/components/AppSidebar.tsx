@@ -29,7 +29,7 @@ import {
 const menuItems = [
   { title: "Dashboard", url: "/", icon: Home, enabled: false },
   { title: "Triagens", url: "/triagens", icon: ClipboardList, enabled: true },
-  { title: "Residentes", url: "/residentes", icon: BedDouble, enabled: false },
+  { title: "Residentes", url: "/residentes", icon: BedDouble, enabled: true },
   { title: "Relatórios", url: "/relatorios", icon: FileText, enabled: false },
   { title: "Equipe", url: "/equipe", icon: Users, enabled: false },
   { title: "Configurações", url: "/configuracoes", icon: Settings, enabled: true },

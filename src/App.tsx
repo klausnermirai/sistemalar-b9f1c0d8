@@ -9,6 +9,7 @@ import Auth from "@/pages/Auth";
 import Setup from "@/pages/Setup";
 import Triagens from "@/pages/Triagens";
 import Settings from "@/pages/Settings";
+import Residentes from "@/pages/Residentes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,14 @@ const App = () => (
               element={
                 <AppLayout>
                   <Triagens />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/residentes"
+              element={
+                <AppLayout>
+                  <Residentes />
                 </AppLayout>
               }
             />

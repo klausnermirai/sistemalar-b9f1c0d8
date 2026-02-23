@@ -230,6 +230,364 @@ export type Database = {
         }
         Relationships: []
       }
+      resident_financials: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          resident_id: string
+          type: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          resident_id: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          resident_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resident_financials_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resident_personal_items: {
+        Row: {
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          observation: string | null
+          resident_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          observation?: string | null
+          resident_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          observation?: string | null
+          resident_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resident_personal_items_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resident_relatives: {
+        Row: {
+          created_at: string
+          id: string
+          is_responsible: boolean
+          kinship: string | null
+          name: string | null
+          observation: string | null
+          phone: string | null
+          resident_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_responsible?: boolean
+          kinship?: string | null
+          name?: string | null
+          observation?: string | null
+          phone?: string | null
+          resident_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_responsible?: boolean
+          kinship?: string | null
+          name?: string | null
+          observation?: string | null
+          phone?: string | null
+          resident_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resident_relatives_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resident_visits: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          observation: string | null
+          resident_id: string
+          time_in: string | null
+          time_out: string | null
+          visitor_doc: string | null
+          visitor_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          observation?: string | null
+          resident_id: string
+          time_in?: string | null
+          time_out?: string | null
+          visitor_doc?: string | null
+          visitor_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          observation?: string | null
+          resident_id?: string
+          time_in?: string | null
+          time_out?: string | null
+          visitor_doc?: string | null
+          visitor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resident_visits_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      residents: {
+        Row: {
+          address: string | null
+          address_number: string | null
+          admission_date: string | null
+          admission_reason: string | null
+          birth_date: string | null
+          cad_unico: string | null
+          candidate_id: string | null
+          cep: string | null
+          cert_book: string | null
+          cert_city: string | null
+          cert_date: string | null
+          cert_number: string | null
+          cert_page: string | null
+          cert_state: string | null
+          cert_type: string | null
+          change_reason: string | null
+          city: string | null
+          complement: string | null
+          cpf: string | null
+          created_at: string
+          dependency_level: string | null
+          discharge_date: string | null
+          discharge_reason: string | null
+          education: string | null
+          father_name: string | null
+          favorite_activities: string | null
+          gender: string | null
+          id: string
+          income: string | null
+          inss_number: string | null
+          inss_status: string | null
+          issuing_body: string | null
+          marital_status: string | null
+          mother_name: string | null
+          name: string
+          nationality: string | null
+          naturalness: string | null
+          neighborhood: string | null
+          nickname: string | null
+          observations: string | null
+          organization_id: string
+          photo_url: string | null
+          preferred_hospitals: string | null
+          previous_institution: string | null
+          profession: string | null
+          reference: string | null
+          religion: string | null
+          rg: string | null
+          room: string | null
+          sams_card: string | null
+          spouse: string | null
+          state: string | null
+          status: string
+          stay_time: string | null
+          stay_type: string | null
+          sus_card: string | null
+          updated_at: string
+          voter_section: string | null
+          voter_title: string | null
+          voter_zone: string | null
+        }
+        Insert: {
+          address?: string | null
+          address_number?: string | null
+          admission_date?: string | null
+          admission_reason?: string | null
+          birth_date?: string | null
+          cad_unico?: string | null
+          candidate_id?: string | null
+          cep?: string | null
+          cert_book?: string | null
+          cert_city?: string | null
+          cert_date?: string | null
+          cert_number?: string | null
+          cert_page?: string | null
+          cert_state?: string | null
+          cert_type?: string | null
+          change_reason?: string | null
+          city?: string | null
+          complement?: string | null
+          cpf?: string | null
+          created_at?: string
+          dependency_level?: string | null
+          discharge_date?: string | null
+          discharge_reason?: string | null
+          education?: string | null
+          father_name?: string | null
+          favorite_activities?: string | null
+          gender?: string | null
+          id?: string
+          income?: string | null
+          inss_number?: string | null
+          inss_status?: string | null
+          issuing_body?: string | null
+          marital_status?: string | null
+          mother_name?: string | null
+          name: string
+          nationality?: string | null
+          naturalness?: string | null
+          neighborhood?: string | null
+          nickname?: string | null
+          observations?: string | null
+          organization_id: string
+          photo_url?: string | null
+          preferred_hospitals?: string | null
+          previous_institution?: string | null
+          profession?: string | null
+          reference?: string | null
+          religion?: string | null
+          rg?: string | null
+          room?: string | null
+          sams_card?: string | null
+          spouse?: string | null
+          state?: string | null
+          status?: string
+          stay_time?: string | null
+          stay_type?: string | null
+          sus_card?: string | null
+          updated_at?: string
+          voter_section?: string | null
+          voter_title?: string | null
+          voter_zone?: string | null
+        }
+        Update: {
+          address?: string | null
+          address_number?: string | null
+          admission_date?: string | null
+          admission_reason?: string | null
+          birth_date?: string | null
+          cad_unico?: string | null
+          candidate_id?: string | null
+          cep?: string | null
+          cert_book?: string | null
+          cert_city?: string | null
+          cert_date?: string | null
+          cert_number?: string | null
+          cert_page?: string | null
+          cert_state?: string | null
+          cert_type?: string | null
+          change_reason?: string | null
+          city?: string | null
+          complement?: string | null
+          cpf?: string | null
+          created_at?: string
+          dependency_level?: string | null
+          discharge_date?: string | null
+          discharge_reason?: string | null
+          education?: string | null
+          father_name?: string | null
+          favorite_activities?: string | null
+          gender?: string | null
+          id?: string
+          income?: string | null
+          inss_number?: string | null
+          inss_status?: string | null
+          issuing_body?: string | null
+          marital_status?: string | null
+          mother_name?: string | null
+          name?: string
+          nationality?: string | null
+          naturalness?: string | null
+          neighborhood?: string | null
+          nickname?: string | null
+          observations?: string | null
+          organization_id?: string
+          photo_url?: string | null
+          preferred_hospitals?: string | null
+          previous_institution?: string | null
+          profession?: string | null
+          reference?: string | null
+          religion?: string | null
+          rg?: string | null
+          room?: string | null
+          sams_card?: string | null
+          spouse?: string | null
+          state?: string | null
+          status?: string
+          stay_time?: string | null
+          stay_type?: string | null
+          sus_card?: string | null
+          updated_at?: string
+          voter_section?: string | null
+          voter_title?: string | null
+          voter_zone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "residents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
