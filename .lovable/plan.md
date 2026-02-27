@@ -1,118 +1,171 @@
 
 
-## Como Migrar os Dados da Planilha para o Sistema
+## Atendimento Multidisciplinar - Subguia Psicologia
 
-### Opcao Recomendada: Edge Function de Importacao
+### Visao Geral
 
-Criar uma funcao no backend que recebe os dados da planilha (em JSON) e insere diretamente na tabela `residents`. Voce podera fazer o upload da planilha pela propria interface do sistema.
+Criar a guia **Atendimento Multidisciplinar** no sistema com a subguia **Psicologia** completa, contendo 4 abas: Anamnese, Primeira Avaliacao Psicologica, Evolucao Psicologica e Atendimentos. Seguindo fielmente o prototipo existente e o padrao visual do sistema.
 
 ---
 
-### O que sera criado
+### 1. Banco de Dados - 4 Novas Tabelas
 
-1. **Botao "Importar Planilha"** na pagina de Residentes
-2. **Backend function** que processa o arquivo e insere os registros
-3. **Mapeamento automatico** das colunas da planilha para as colunas do banco
+#### Tabela `psychology_anamnesis` (avaliacao inicial / anamnese)
 
-### Mapeamento Planilha → Banco
+| Coluna | Tipo |
+|--------|------|
+| id | uuid PK |
+| resident_id | uuid FK -> residents |
+| date | date |
+| institutionalization_awareness | text |
+| initial_emotional_reaction | jsonb (array de strings) |
+| recent_griefs_and_losses | text |
+| traumas_and_emotional_triggers | text |
+| orientation_level | text |
+| mood_screening_gds | text |
+| cognitive_screening_mmse | numeric |
+| family_bond_quality | text |
+| visit_expectations | text |
+| initial_psychological_synthesis | text |
+| pia_psychological_goals | text |
+| created_at | timestamptz |
+| updated_at | timestamptz |
 
-A planilha tem 53 colunas. Aqui esta o mapeamento direto:
+#### Tabela `psychology_assessments` (primeira avaliacao psicologica)
 
-| Coluna da Planilha | Campo no Banco | Observacao |
-|---------------------|----------------|------------|
-| Nome | name | direto |
-| Apelido | nickname | direto |
-| Sexo | gender | direto |
-| Data de aniversario | birth_date | converter "10/09/1959" para "1959-09-10" |
-| Religiao | religion | direto |
-| Profissao | profession | direto |
-| Escolaridade | education | direto |
-| Estado civil | marital_status | direto |
-| RG | rg | direto |
-| Orgao expeditor | issuing_body | direto |
-| CPF | cpf | direto |
-| Titulo de eleitor | voter_title | direto |
-| Secao eleitoral | voter_section | direto |
-| Zona eleitoral | voter_zone | direto |
-| Tipo de documento certidao | cert_type | direto |
-| Numero certidao | cert_number | direto |
-| Folha | cert_page | direto |
-| Livro | cert_book | direto |
-| Cidade de emissao | cert_city | direto |
-| Estado de emissao | cert_state | direto |
-| Data de emissao | cert_date | converter data |
-| Numero cartao SUS | sus_card | direto |
-| Numero cartao SAMS | sams_card | direto |
-| Numero do beneficio do INSS | inss_number | direto |
-| Situacao do beneficio do INSS | inss_status | direto |
-| Numero do cadastro unico | cad_unico | direto |
-| Tipo de estadia | stay_type | mapear "Residente" para "Permanente" |
-| Nome de outra instituicao | previous_institution | direto |
-| Tempo de acolhimento da outra inst. | stay_time | direto |
-| Motivo da troca | change_reason | direto |
-| Data do acolhimento | admission_date | converter data |
-| Ocupacao do residente | room | direto |
-| Motivo do acolhimento | admission_reason | direto |
-| Motivo do desacolhimento | discharge_reason | direto |
-| Data do desacolhimento | discharge_date | converter data |
-| Rendimentos mensalidades | income | direto |
-| Atividades favoritas | favorite_activities | direto |
-| Endereco | address | direto |
-| CEP | cep | direto |
-| Numero | address_number | direto |
-| Bairro | neighborhood | direto |
-| Cidade | city | direto |
-| Estado | state | direto |
-| Referencia | reference | direto |
-| Complemento | complement | direto |
-| Observacao | observations | direto |
-| Status | status | mapear "Ativo" para "ativo" |
-| Grau de dependencia | dependency_level | direto |
-| Responsavel | *separado* | sera inserido na tabela `resident_relatives` |
+Mesma estrutura da anamnese (campos identicos conforme prototipo usa o mesmo formulario `PsychologicalAssessmentForm` com flag `isAnamnese`).
 
-### Campos que precisam de tratamento especial
+| Coluna | Tipo |
+|--------|------|
+| id | uuid PK |
+| resident_id | uuid FK -> residents |
+| date | date |
+| institutionalization_awareness | text |
+| initial_emotional_reaction | jsonb |
+| recent_griefs_and_losses | text |
+| traumas_and_emotional_triggers | text |
+| orientation_level | text |
+| mood_screening_gds | text |
+| cognitive_screening_mmse | numeric |
+| family_bond_quality | text |
+| visit_expectations | text |
+| initial_psychological_synthesis | text |
+| pia_psychological_goals | text |
+| created_at | timestamptz |
+| updated_at | timestamptz |
 
-- **Datas**: Formato "DD/MM/AAAA" da planilha precisa ser convertido para "AAAA-MM-DD"
-- **Responsavel**: A planilha tem um campo unico com nomes separados por "/". Cada nome sera inserido como registro separado na tabela `resident_relatives` com `is_responsible = true`
-- **Status**: Normalizar para lowercase ("Ativo" vira "ativo")
-- **Idade**: Nao sera importada (calculada automaticamente a partir da data de nascimento)
+#### Tabela `psychology_evolutions` (evolucoes periodicas)
 
-### Fluxo da Importacao
+| Coluna | Tipo |
+|--------|------|
+| id | uuid PK |
+| resident_id | uuid FK -> residents |
+| date | date |
+| institutional_adaptation_status | text |
+| mood_behavior_evolution | text |
+| current_socialization_quality | jsonb (array de strings) |
+| pia_goal_status | text |
+| new_conduct | text |
+| created_by | uuid |
+| created_at | timestamptz |
 
-```text
-1. Usuario clica "Importar Planilha" na pagina Residentes
-2. Seleciona o arquivo XLS
-3. Sistema le o arquivo no navegador (biblioteca SheetJS/xlsx)
-4. Converte para JSON com o mapeamento acima
-5. Envia para o backend (edge function)
-6. Backend insere na tabela residents + resident_relatives
-7. Exibe resumo: "44 residentes importados com sucesso"
-```
+#### Tabela `psychology_attendances` (prontuario corrido)
 
-### Detalhes Tecnicos
+| Coluna | Tipo |
+|--------|------|
+| id | uuid PK |
+| resident_id | uuid FK -> residents |
+| date_time | timestamptz |
+| intervention_type | text |
+| attendance_evolution | text |
+| mural_notes | text |
+| private_notes | text |
+| needs_team_report | boolean DEFAULT false |
+| signature | text |
+| created_by | uuid |
+| created_at | timestamptz |
 
-**Novo arquivo:** `src/components/residentes/ImportResidents.tsx`
-- Componente com input de arquivo e botao de importar
-- Usa biblioteca `xlsx` (SheetJS) para ler o XLS no navegador
-- Faz o mapeamento e conversao de dados
-- Chama a edge function para inserir
+**RLS**: Todas as tabelas seguem o padrao existente - join com `residents.organization_id` via `user_belongs_to_org`. A tabela `psychology_attendances` tera uma politica especial: o campo `private_notes` sera protegido no nivel da aplicacao (nao retornado para usuarios sem perfil de psicologia). No banco, o campo sera armazenado normalmente mas a logica de acesso sera controlada no frontend.
 
-**Nova edge function:** `supabase/functions/import-residents/index.ts`
-- Recebe array de residentes em JSON
-- Valida campos obrigatorios (nome)
-- Insere em batch na tabela `residents`
-- Extrai responsaveis e insere na tabela `resident_relatives`
-- Retorna contagem de sucesso/erros
+**Seguranca do campo sigiloso**: O campo `private_notes` sera protegido por confirmacao de senha no frontend (como no prototipo). Futuramente pode ser migrado para controle por role no backend.
 
-**Nova dependencia:** `xlsx` (SheetJS) - para parsing do arquivo XLS no navegador
+---
 
-**Alteracao:** `src/pages/Residentes.tsx` - adicionar botao "Importar Planilha" ao lado de "Cadastrar Idoso"
+### 2. Componentes Frontend
 
-### Resumo
+#### Nova pagina: `src/pages/AtendimentoMultidisciplinar.tsx`
+- Seletor de residente (dropdown com busca)
+- Sidebar de competencias (Psicologia habilitada, demais desabilitadas)
+- Area de conteudo com sub-abas da competencia selecionada
+
+#### Novos componentes em `src/components/atendimento/`:
+
+| Componente | Funcao |
+|-----------|--------|
+| `PsychologyAnamnese.tsx` | Formulario de anamnese - Secoes A (Historico/Emocional), B (Rastreio Cognitivo), C (Rede de Apoio), D (Conclusao PIA) |
+| `PsychologyAssessment.tsx` | Primeira Avaliacao Psicologica - mesmo formulario, dados separados |
+| `PsychologyEvolutions.tsx` | Lista + formulario de evolucoes - adaptacao institucional, humor, socializacao, meta PIA |
+| `PsychologyAttendances.tsx` | Lista + formulario de atendimentos com 3 areas: prontuario, mural, sigiloso |
+
+#### Novos hooks em `src/hooks/`:
+
+| Hook | Tabela |
+|------|--------|
+| `usePsychologyAnamnesis.ts` | psychology_anamnesis |
+| `usePsychologyAssessments.ts` | psychology_assessments |
+| `usePsychologyEvolutions.ts` | psychology_evolutions |
+| `usePsychologyAttendances.ts` | psychology_attendances |
+
+---
+
+### 3. Navegacao
+
+- Adicionar item "Atendimento Multidisciplinar" no sidebar (`AppSidebar.tsx`) com icone `Brain` ou `HeartPulse`
+- Adicionar rota `/atendimento` no `App.tsx`
+
+---
+
+### 4. Detalhes dos Formularios (baseado no prototipo)
+
+**Anamnese e Primeira Avaliacao** (mesmo layout, dados separados):
+- Consciencia da Institucionalizacao (select: vontade propria / persuadido / resistencia / incapaz)
+- Reacao Emocional Inicial (checkboxes: Apatia, Tristeza, Agressividade, Ansiedade, Tranquilidade)
+- Lutos e Perdas Recentes (textarea)
+- Traumas e Gatilhos Emocionais (textarea com destaque vermelho quando preenchido)
+- Nivel de Orientacao (select)
+- Rastreio de Humor GDS (select)
+- Rastreio Cognitivo Mini-Mental (numero)
+- Qualidade do Vinculo Familiar (select)
+- Expectativa de Visitas (textarea)
+- Sintese Psicologica Inicial (textarea)
+- Metas Psicologicas para o PIA (textarea)
+
+**Evolucao Psicologica**:
+- Data, Status de Adaptacao, Evolucao Humor/Comportamento
+- Qualidade da Socializacao (checkboxes)
+- Status da Meta do PIA
+- Nova Conduta
+
+**Atendimentos**:
+- Data/hora automaticos
+- Tipo de Intervencao (select: Acolhimento individual, Observacao, Crise, Mediacao, Orientacao familiar)
+- Anotacao do Prontuario (textarea - registro profissional normal)
+- Compartilhar no Mural (textarea - visivel para equipe)
+- Anotacao Privada (textarea - protegida por senha, somente psicologia)
+- Checkbox "Precisa de Repasse a Equipe"
+- Assinatura automatica do profissional logado
+
+---
+
+### 5. Resumo de Entregas
 
 | Item | Tipo |
 |------|------|
-| Componente ImportResidents | React |
-| Edge function import-residents | Backend |
-| Dependencia xlsx | npm |
-| Botao na pagina | Alteracao Residentes.tsx |
+| 4 tabelas no banco | Migration SQL |
+| RLS para todas as tabelas | Migration SQL |
+| Triggers updated_at | Migration SQL |
+| 1 pagina (AtendimentoMultidisciplinar.tsx) | Componente React |
+| 4 componentes de psicologia | Componentes React |
+| 4 hooks de dados | Hooks React |
+| Rota + sidebar | Alteracao App.tsx e AppSidebar.tsx |
+
