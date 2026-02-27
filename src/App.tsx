@@ -10,6 +10,7 @@ import Setup from "@/pages/Setup";
 import Triagens from "@/pages/Triagens";
 import Settings from "@/pages/Settings";
 import Residentes from "@/pages/Residentes";
+import AtendimentoMultidisciplinar from "@/pages/AtendimentoMultidisciplinar";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,14 @@ const App = () => (
               element={
                 <AppLayout>
                   <Residentes />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/atendimento"
+              element={
+                <AppLayout>
+                  <AtendimentoMultidisciplinar />
                 </AppLayout>
               }
             />

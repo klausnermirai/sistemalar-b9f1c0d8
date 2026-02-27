@@ -230,6 +230,233 @@ export type Database = {
         }
         Relationships: []
       }
+      psychology_anamnesis: {
+        Row: {
+          cognitive_screening_mmse: number | null
+          created_at: string
+          date: string
+          family_bond_quality: string | null
+          id: string
+          initial_emotional_reaction: Json | null
+          initial_psychological_synthesis: string | null
+          institutionalization_awareness: string | null
+          mood_screening_gds: string | null
+          orientation_level: string | null
+          pia_psychological_goals: string | null
+          recent_griefs_and_losses: string | null
+          resident_id: string
+          traumas_and_emotional_triggers: string | null
+          updated_at: string
+          visit_expectations: string | null
+        }
+        Insert: {
+          cognitive_screening_mmse?: number | null
+          created_at?: string
+          date?: string
+          family_bond_quality?: string | null
+          id?: string
+          initial_emotional_reaction?: Json | null
+          initial_psychological_synthesis?: string | null
+          institutionalization_awareness?: string | null
+          mood_screening_gds?: string | null
+          orientation_level?: string | null
+          pia_psychological_goals?: string | null
+          recent_griefs_and_losses?: string | null
+          resident_id: string
+          traumas_and_emotional_triggers?: string | null
+          updated_at?: string
+          visit_expectations?: string | null
+        }
+        Update: {
+          cognitive_screening_mmse?: number | null
+          created_at?: string
+          date?: string
+          family_bond_quality?: string | null
+          id?: string
+          initial_emotional_reaction?: Json | null
+          initial_psychological_synthesis?: string | null
+          institutionalization_awareness?: string | null
+          mood_screening_gds?: string | null
+          orientation_level?: string | null
+          pia_psychological_goals?: string | null
+          recent_griefs_and_losses?: string | null
+          resident_id?: string
+          traumas_and_emotional_triggers?: string | null
+          updated_at?: string
+          visit_expectations?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psychology_anamnesis_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      psychology_assessments: {
+        Row: {
+          cognitive_screening_mmse: number | null
+          created_at: string
+          date: string
+          family_bond_quality: string | null
+          id: string
+          initial_emotional_reaction: Json | null
+          initial_psychological_synthesis: string | null
+          institutionalization_awareness: string | null
+          mood_screening_gds: string | null
+          orientation_level: string | null
+          pia_psychological_goals: string | null
+          recent_griefs_and_losses: string | null
+          resident_id: string
+          traumas_and_emotional_triggers: string | null
+          updated_at: string
+          visit_expectations: string | null
+        }
+        Insert: {
+          cognitive_screening_mmse?: number | null
+          created_at?: string
+          date?: string
+          family_bond_quality?: string | null
+          id?: string
+          initial_emotional_reaction?: Json | null
+          initial_psychological_synthesis?: string | null
+          institutionalization_awareness?: string | null
+          mood_screening_gds?: string | null
+          orientation_level?: string | null
+          pia_psychological_goals?: string | null
+          recent_griefs_and_losses?: string | null
+          resident_id: string
+          traumas_and_emotional_triggers?: string | null
+          updated_at?: string
+          visit_expectations?: string | null
+        }
+        Update: {
+          cognitive_screening_mmse?: number | null
+          created_at?: string
+          date?: string
+          family_bond_quality?: string | null
+          id?: string
+          initial_emotional_reaction?: Json | null
+          initial_psychological_synthesis?: string | null
+          institutionalization_awareness?: string | null
+          mood_screening_gds?: string | null
+          orientation_level?: string | null
+          pia_psychological_goals?: string | null
+          recent_griefs_and_losses?: string | null
+          resident_id?: string
+          traumas_and_emotional_triggers?: string | null
+          updated_at?: string
+          visit_expectations?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psychology_assessments_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      psychology_attendances: {
+        Row: {
+          attendance_evolution: string | null
+          created_at: string
+          created_by: string | null
+          date_time: string
+          id: string
+          intervention_type: string | null
+          mural_notes: string | null
+          needs_team_report: boolean
+          private_notes: string | null
+          resident_id: string
+          signature: string | null
+        }
+        Insert: {
+          attendance_evolution?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_time?: string
+          id?: string
+          intervention_type?: string | null
+          mural_notes?: string | null
+          needs_team_report?: boolean
+          private_notes?: string | null
+          resident_id: string
+          signature?: string | null
+        }
+        Update: {
+          attendance_evolution?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_time?: string
+          id?: string
+          intervention_type?: string | null
+          mural_notes?: string | null
+          needs_team_report?: boolean
+          private_notes?: string | null
+          resident_id?: string
+          signature?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psychology_attendances_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      psychology_evolutions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          current_socialization_quality: Json | null
+          date: string
+          id: string
+          institutional_adaptation_status: string | null
+          mood_behavior_evolution: string | null
+          new_conduct: string | null
+          pia_goal_status: string | null
+          resident_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          current_socialization_quality?: Json | null
+          date?: string
+          id?: string
+          institutional_adaptation_status?: string | null
+          mood_behavior_evolution?: string | null
+          new_conduct?: string | null
+          pia_goal_status?: string | null
+          resident_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          current_socialization_quality?: Json | null
+          date?: string
+          id?: string
+          institutional_adaptation_status?: string | null
+          mood_behavior_evolution?: string | null
+          new_conduct?: string | null
+          pia_goal_status?: string | null
+          resident_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "psychology_evolutions_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resident_financials: {
         Row: {
           amount: number
