@@ -153,6 +153,240 @@ export type Database = {
           },
         ]
       }
+      nutrition_assessments: {
+        Row: {
+          activity_level: string | null
+          age: number | null
+          aversions_restrictions: string | null
+          body_fat_percentage: number | null
+          chronic_diseases: Json | null
+          circ_abdomen: number | null
+          circ_arm: number | null
+          circ_calf: number | null
+          circ_hip: number | null
+          circ_thigh: number | null
+          circ_waist: number | null
+          created_at: string
+          date: string
+          feeding_route: string | null
+          food_preferences: string | null
+          get: number | null
+          height_m: number | null
+          id: string
+          imc: number | null
+          measurements_not_possible: boolean
+          needs_supplementation: boolean
+          nutritional_diagnosis: string | null
+          oral_health: Json | null
+          pia_nutritional_goals: string | null
+          recommended_consistency: string | null
+          resident_id: string
+          screening_classification: string | null
+          screening_observations: string | null
+          screening_score: number | null
+          severe_allergies: string | null
+          sex: string | null
+          skinfold_bicipital: number | null
+          skinfold_subscapular: number | null
+          skinfold_suprailiac: number | null
+          skinfold_tricipital: number | null
+          supplementation_details: string | null
+          tmb: number | null
+          updated_at: string
+          weight_kg: number | null
+        }
+        Insert: {
+          activity_level?: string | null
+          age?: number | null
+          aversions_restrictions?: string | null
+          body_fat_percentage?: number | null
+          chronic_diseases?: Json | null
+          circ_abdomen?: number | null
+          circ_arm?: number | null
+          circ_calf?: number | null
+          circ_hip?: number | null
+          circ_thigh?: number | null
+          circ_waist?: number | null
+          created_at?: string
+          date?: string
+          feeding_route?: string | null
+          food_preferences?: string | null
+          get?: number | null
+          height_m?: number | null
+          id?: string
+          imc?: number | null
+          measurements_not_possible?: boolean
+          needs_supplementation?: boolean
+          nutritional_diagnosis?: string | null
+          oral_health?: Json | null
+          pia_nutritional_goals?: string | null
+          recommended_consistency?: string | null
+          resident_id: string
+          screening_classification?: string | null
+          screening_observations?: string | null
+          screening_score?: number | null
+          severe_allergies?: string | null
+          sex?: string | null
+          skinfold_bicipital?: number | null
+          skinfold_subscapular?: number | null
+          skinfold_suprailiac?: number | null
+          skinfold_tricipital?: number | null
+          supplementation_details?: string | null
+          tmb?: number | null
+          updated_at?: string
+          weight_kg?: number | null
+        }
+        Update: {
+          activity_level?: string | null
+          age?: number | null
+          aversions_restrictions?: string | null
+          body_fat_percentage?: number | null
+          chronic_diseases?: Json | null
+          circ_abdomen?: number | null
+          circ_arm?: number | null
+          circ_calf?: number | null
+          circ_hip?: number | null
+          circ_thigh?: number | null
+          circ_waist?: number | null
+          created_at?: string
+          date?: string
+          feeding_route?: string | null
+          food_preferences?: string | null
+          get?: number | null
+          height_m?: number | null
+          id?: string
+          imc?: number | null
+          measurements_not_possible?: boolean
+          needs_supplementation?: boolean
+          nutritional_diagnosis?: string | null
+          oral_health?: Json | null
+          pia_nutritional_goals?: string | null
+          recommended_consistency?: string | null
+          resident_id?: string
+          screening_classification?: string | null
+          screening_observations?: string | null
+          screening_score?: number | null
+          severe_allergies?: string | null
+          sex?: string | null
+          skinfold_bicipital?: number | null
+          skinfold_subscapular?: number | null
+          skinfold_suprailiac?: number | null
+          skinfold_tricipital?: number | null
+          supplementation_details?: string | null
+          tmb?: number | null
+          updated_at?: string
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_assessments_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nutrition_attendances: {
+        Row: {
+          attendance_notes: string | null
+          created_at: string
+          created_by: string | null
+          date_time: string
+          id: string
+          mural_notes: string | null
+          resident_id: string
+          signature: string | null
+          visit_reason: string | null
+        }
+        Insert: {
+          attendance_notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_time?: string
+          id?: string
+          mural_notes?: string | null
+          resident_id: string
+          signature?: string | null
+          visit_reason?: string | null
+        }
+        Update: {
+          attendance_notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_time?: string
+          id?: string
+          mural_notes?: string | null
+          resident_id?: string
+          signature?: string | null
+          visit_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_attendances_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nutrition_evolutions: {
+        Row: {
+          consistency_change: boolean
+          consistency_change_justification: string | null
+          created_at: string
+          created_by: string | null
+          current_weight: number | null
+          date: string
+          food_acceptance: string | null
+          id: string
+          new_conduct: string | null
+          pia_goal_status: string | null
+          resident_id: string
+          weight_alert: boolean
+          weight_variation_percent: number | null
+        }
+        Insert: {
+          consistency_change?: boolean
+          consistency_change_justification?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_weight?: number | null
+          date?: string
+          food_acceptance?: string | null
+          id?: string
+          new_conduct?: string | null
+          pia_goal_status?: string | null
+          resident_id: string
+          weight_alert?: boolean
+          weight_variation_percent?: number | null
+        }
+        Update: {
+          consistency_change?: boolean
+          consistency_change_justification?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_weight?: number | null
+          date?: string
+          food_acceptance?: string | null
+          id?: string
+          new_conduct?: string | null
+          pia_goal_status?: string | null
+          resident_id?: string
+          weight_alert?: boolean
+          weight_variation_percent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_evolutions_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           central_council_name: string | null

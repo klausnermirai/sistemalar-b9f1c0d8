@@ -3,14 +3,18 @@ import { useResidents } from "@/hooks/useResidents";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Brain, Stethoscope, HeartPulse, Activity, Users } from "lucide-react";
+import { Brain, Stethoscope, HeartPulse, Activity, Users, Apple } from "lucide-react";
 import { PsychologyAnamnese } from "@/components/atendimento/PsychologyAnamnese";
 import { PsychologyAssessment } from "@/components/atendimento/PsychologyAssessment";
 import { PsychologyEvolutions } from "@/components/atendimento/PsychologyEvolutions";
 import { PsychologyAttendances } from "@/components/atendimento/PsychologyAttendances";
+import { NutritionAssessment } from "@/components/atendimento/NutritionAssessment";
+import { NutritionEvolutions } from "@/components/atendimento/NutritionEvolutions";
+import { NutritionAttendances } from "@/components/atendimento/NutritionAttendances";
 
 const COMPETENCIAS = [
   { key: "psicologia", label: "Psicologia", icon: Brain, enabled: true },
+  { key: "nutricao", label: "Nutricionista", icon: Apple, enabled: true },
   { key: "servico_social", label: "Serviço Social", icon: Users, enabled: false },
   { key: "enfermagem", label: "Enfermagem", icon: HeartPulse, enabled: false },
   { key: "medicina", label: "Medicina", icon: Stethoscope, enabled: false },
@@ -101,6 +105,24 @@ export default function AtendimentoMultidisciplinar() {
                 </TabsContent>
                 <TabsContent value="atendimentos">
                   <PsychologyAttendances residentId={selectedResidentId} />
+                </TabsContent>
+              </Tabs>
+            )}
+            {selectedCompetencia === "nutricao" && (
+              <Tabs defaultValue="avaliacao">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="avaliacao">1ª Avaliação Nutricional</TabsTrigger>
+                  <TabsTrigger value="evolucoes">Evolução Nutricional</TabsTrigger>
+                  <TabsTrigger value="atendimentos">Atendimentos</TabsTrigger>
+                </TabsList>
+                <TabsContent value="avaliacao">
+                  <NutritionAssessment residentId={selectedResidentId} />
+                </TabsContent>
+                <TabsContent value="evolucoes">
+                  <NutritionEvolutions residentId={selectedResidentId} />
+                </TabsContent>
+                <TabsContent value="atendimentos">
+                  <NutritionAttendances residentId={selectedResidentId} />
                 </TabsContent>
               </Tabs>
             )}
