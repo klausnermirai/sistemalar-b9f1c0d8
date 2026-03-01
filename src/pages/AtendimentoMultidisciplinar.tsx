@@ -11,20 +11,35 @@ import { PsychologyAttendances } from "@/components/atendimento/PsychologyAttend
 import { NutritionAssessment } from "@/components/atendimento/NutritionAssessment";
 import { NutritionEvolutions } from "@/components/atendimento/NutritionEvolutions";
 import { NutritionAttendances } from "@/components/atendimento/NutritionAttendances";
+import { useUserRole } from "@/hooks/useUserRole";
 
-const COMPETENCIAS = [
-  { key: "psicologia", label: "Psicologia", icon: Brain, enabled: true },
-  { key: "nutricao", label: "Nutricionista", icon: Apple, enabled: true },
-  { key: "servico_social", label: "Serviço Social", icon: Users, enabled: false },
-  { key: "enfermagem", label: "Enfermagem", icon: HeartPulse, enabled: false },
-  { key: "medicina", label: "Medicina", icon: Stethoscope, enabled: false },
-  { key: "fisioterapia", label: "Fisioterapia", icon: Activity, enabled: false },
+const ALL_COMPETENCIAS = [
+  { key: "psicologia", label: "Psicologia", icon: Brain, enabled: true, module: "atend:psicologia" as const },
+  { key: "nutricao", label: "Nutricionista", icon: Apple, enabled: true, module: "atend:nutricao" as const },
+  { key: "servico_social", label: "Serviço Social", icon: Users, enabled: false, module: null },
+  { key: "enfermagem", label: "Enfermagem", icon: HeartPulse, enabled: false, module: null },
+  { key: "medicina", label: "Medicina", icon: Stethoscope, enabled: false, module: null },
+  { key: "fisioterapia", label: "Fisioterapia", icon: Activity, enabled: false, module: null },
 ];
 
 export default function AtendimentoMultidisciplinar() {
   const { data: residents = [], isLoading } = useResidents();
   const [selectedResidentId, setSelectedResidentId] = useState<string>("");
-  const [selectedCompetencia, setSelectedCompetencia] = useState("psicologia");
+  const { canAccess } = useUserRole();
+
+  const competencias = ALL_COMPETENCIAS.filter((c) => {
+    if (!c.enabled) return false;
+    if (!c.module) return true;
+    return canAccess(c.module);
+  });
+
+  // Also show disabled ones for UI completeness
+  const disabledCompetencias = ALL_COMPETENCIAS.filter((c) => !c.enabled);
+  const visibleCompetencias = [...competencias, ...disabledCompetencias];
+
+  const [selectedCompetencia, setSelectedCompetencia] = useState(
+    competencias.length > 0 ? competencias[0].key : "psicologia"
+  );
 
   const activeResidents = residents.filter((r) => r.status === "ativo");
 
@@ -39,7 +54,6 @@ export default function AtendimentoMultidisciplinar() {
         </p>
       </div>
 
-      {/* Resident selector */}
       <div className="max-w-md">
         <Select value={selectedResidentId} onValueChange={setSelectedResidentId}>
           <SelectTrigger>
@@ -63,30 +77,31 @@ export default function AtendimentoMultidisciplinar() {
         </Card>
       ) : (
         <div className="flex gap-6">
-          {/* Competências sidebar */}
           <div className="w-48 space-y-1 shrink-0">
-            {COMPETENCIAS.map((c) => (
-              <button
-                key={c.key}
-                disabled={!c.enabled}
-                onClick={() => setSelectedCompetencia(c.key)}
-                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-sm transition-colors ${
-                  selectedCompetencia === c.key
-                    ? "bg-primary text-primary-foreground font-semibold"
-                    : c.enabled
-                    ? "hover:bg-muted text-foreground"
-                    : "opacity-40 cursor-not-allowed text-muted-foreground"
-                }`}
-              >
-                <c.icon className="h-4 w-4" />
-                {c.label}
-              </button>
-            ))}
+            {visibleCompetencias.map((c) => {
+              const isEnabled = c.enabled && competencias.some((cc) => cc.key === c.key);
+              return (
+                <button
+                  key={c.key}
+                  disabled={!isEnabled}
+                  onClick={() => setSelectedCompetencia(c.key)}
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-sm transition-colors ${
+                    selectedCompetencia === c.key
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : isEnabled
+                      ? "hover:bg-muted text-foreground"
+                      : "opacity-40 cursor-not-allowed text-muted-foreground"
+                  }`}
+                >
+                  <c.icon className="h-4 w-4" />
+                  {c.label}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Content area */}
           <div className="flex-1 min-w-0">
-            {selectedCompetencia === "psicologia" && (
+            {selectedCompetencia === "psicologia" && canAccess("atend:psicologia") && (
               <Tabs defaultValue="anamnese">
                 <TabsList className="mb-4">
                   <TabsTrigger value="anamnese">Anamnese</TabsTrigger>
@@ -108,7 +123,7 @@ export default function AtendimentoMultidisciplinar() {
                 </TabsContent>
               </Tabs>
             )}
-            {selectedCompetencia === "nutricao" && (
+            {selectedCompetencia === "nutricao" && canAccess("atend:nutricao") && (
               <Tabs defaultValue="avaliacao">
                 <TabsList className="mb-4">
                   <TabsTrigger value="avaliacao">1ª Avaliação Nutricional</TabsTrigger>
