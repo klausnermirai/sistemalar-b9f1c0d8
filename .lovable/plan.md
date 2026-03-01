@@ -1,169 +1,140 @@
 
 
-## 3 Funcionalidades: Prontuario Multidisciplinar + PIA + Mural
+## Controle de Papeis e Niveis de Acesso
 
 ### Visao Geral
 
-Implementar 3 funcionalidades novas sem alterar nenhuma estrutura existente:
-1. **Prontuario Multidisciplinar** - timeline consolidada dentro de Residentes
-2. **PIA** - Plano Individual de Atendimento autoabastecido dentro de Residentes
-3. **Mural** - chat institucional com nao-lidas e exportacao WhatsApp
+Implementar controle de acesso baseado em papeis (RBAC) no sistema, usando os papeis: **Administrador**, **Assistente Social**, **Psicologia** e **Nutricionista**. Cada papel tera visibilidade restrita a modulos especificos.
 
 ---
 
-### 1. Banco de Dados — Novas Tabelas
+### 1. Banco de Dados — Novos Valores no Enum
 
-#### Tabela `pia` (Plano Individual de Atendimento)
+A enum `app_role` atualmente tem: `admin`, `coordinator`, `social_worker`, `viewer`.
 
-| Coluna | Tipo | Obs |
-|--------|------|-----|
-| id | uuid PK | |
-| resident_id | uuid FK residents | |
-| status | text | ativo/em_revisao/encerrado |
-| team_synthesis | text | sintese geral editavel |
-| interventions_psychology | text | plano intervencoes psico |
-| interventions_nutrition | text | plano intervencoes nutri |
-| interventions_other | text | outras competencias |
-| created_at | timestamptz | |
-| updated_at | timestamptz | |
+Adicionar dois novos valores:
+- `psicologo`
+- `nutricionista`
 
-#### Tabela `pia_goals` (Metas por competencia)
+Manter os existentes para compatibilidade. O mapeamento final:
 
-| Coluna | Tipo |
-|--------|------|
-| id | uuid PK |
-| pia_id | uuid FK pia |
-| competency | text |
-| goal_text | text |
-| status | text |
-| review_deadline | date |
-| observations | text |
-| created_at | timestamptz |
+| Papel solicitado | Valor no enum |
+|------------------|---------------|
+| Administrador | `admin` |
+| Assistente Social | `social_worker` |
+| Psicologia | `psicologo` |
+| Nutricionista | `nutricionista` |
 
-#### Tabela `pia_revisions` (Historico de revisoes)
+Migration SQL:
+```sql
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'psicologo';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'nutricionista';
+```
 
-| Coluna | Tipo |
-|--------|------|
-| id | uuid PK |
-| pia_id | uuid FK pia |
-| date | date |
-| revised_by | text |
-| changes_description | text |
-| created_by | uuid |
-| created_at | timestamptz |
-
-#### Tabela `mural_messages` (Mural institucional)
-
-| Coluna | Tipo |
-|--------|------|
-| id | uuid PK |
-| organization_id | uuid FK organizations |
-| author_id | uuid |
-| author_name | text |
-| content | text |
-| source_type | text | nutricao/psicologia/manual/etc |
-| source_resident_name | text | nome do residente se aplicavel |
-| created_at | timestamptz |
-
-#### Tabela `mural_reads` (Controle de leitura)
-
-| Coluna | Tipo |
-|--------|------|
-| id | uuid PK |
-| user_id | uuid |
-| organization_id | uuid FK |
-| last_read_at | timestamptz |
-
-Todas com RLS seguindo padrao existente (`user_belongs_to_org`). Triggers `updated_at` onde aplicavel.
-
-Adicionar coluna `mural_whatsapp_phone` (text, nullable) na tabela `organizations`.
+Nenhuma alteracao em RLS necessaria — as politicas ja usam `user_belongs_to_org` para isolamento multi-tenant, sem filtrar por papel.
 
 ---
 
-### 2. Prontuario Multidisciplinar (dentro de Residentes)
+### 2. Hook de Permissoes — `useUserRole.ts`
 
-**Localizacao**: Nova aba "Prontuario" no `ResidentForm.tsx` (ao lado de Dados Pessoais, Familiares, etc.)
+Novo arquivo: `src/hooks/useUserRole.ts`
 
-**Arquivos novos**:
-- `src/components/residentes/ProntuarioTab.tsx` — componente da aba
-- `src/hooks/useMultidisciplinaryRecord.ts` — hook que consulta TODAS as tabelas de atendimento do residente e unifica em timeline
+Funcionalidade:
+- Busca o papel do usuario logado na tabela `user_roles`
+- Expoe: `role`, `isAdmin`, `isSocialWorker`, `isPsicologo`, `isNutricionista`
+- Expoe funcao utilitaria `canAccess(module)` que retorna `true/false` baseado na matriz de permissoes
 
-**Funcionamento**:
-- O hook faz queries paralelas nas 7 tabelas existentes: `psychology_anamnesis`, `psychology_assessments`, `psychology_evolutions`, `psychology_attendances`, `nutrition_assessments`, `nutrition_evolutions`, `nutrition_attendances`
-- Unifica todos os registros em um array com formato `{ date, competency, type, professional, summary, fullData }`
-- Ordena por data (mais recente primeiro)
-- Filtros: competencia (dropdown), periodo (date range), checkbox "somente mural"
-- Cada item na timeline: card compacto com data, badge da competencia, tipo, resumo truncado e botao "Ver completo" (dialog)
-- Conteudo sigiloso da psicologia (`private_notes`): exibe "Conteudo restrito" para todos; nao ha controle de role nesta fase
-- Botao "Gerar PDF": usa `window.print()` com CSS de impressao ou gera HTML formatado para download. Respeita sigilo (nao inclui `private_notes`)
+Matriz de permissoes codificada no hook:
 
-**Alteracao em `ResidentForm.tsx`**: Adicionar nova tab "Prontuario" (habilitada somente em modo edicao, como as outras abas)
-
----
-
-### 3. PIA — Plano Individual de Atendimento (dentro de Residentes)
-
-**Localizacao**: Nova aba "PIA" no `ResidentForm.tsx`
-
-**Arquivos novos**:
-- `src/components/residentes/PIATab.tsx` — componente completo
-- `src/hooks/usePIA.ts` — hook para tabelas `pia`, `pia_goals`, `pia_revisions`
-
-**Funcionamento**:
-- Ao abrir, busca PIA existente do residente. Se nao existir, botao "Criar PIA"
-- **Auto-abastecimento**: O componente faz query na `psychology_anamnesis` (campo `initial_psychological_synthesis` e `pia_psychological_goals`) e `nutrition_assessments` (campo `nutritional_diagnosis` e `pia_nutritional_goals`) para exibir automaticamente na secao de diagnostico
-- Secoes:
-  - A) Identificacao: status (select), data criacao, ultima revisao
-  - B) Diagnostico Multidisciplinar: dados auto-preenchidos (read-only, vindos das avaliacoes) + campo editavel "Sintese geral da equipe"
-  - C) Metas por competencia: lista de metas com competencia, texto, status (em_andamento/atingida/nao_atingida), prazo revisao, observacoes. Botao "Adicionar meta"
-  - D) Plano de intervencoes por competencia: textareas editaveis (psicologia, nutricao, outros)
-  - E) Revisoes: lista historica + botao "Nova revisao" (data auto, responsavel auto, campo descricao)
-- Botao "Gerar PDF": monta documento completo com todas as secoes
+| Modulo/Aba | admin | social_worker | psicologo | nutricionista |
+|------------|-------|---------------|-----------|---------------|
+| Triagens | Sim | Sim | Nao | Nao |
+| Residentes | Sim | Sim | Sim | Sim |
+| Res: Dados Pessoais | Sim | Sim | Sim | Sim |
+| Res: Familiares | Sim | Sim | Nao | Nao |
+| Res: Financeiro | Sim | Sim | Nao | Nao |
+| Res: Itens Pessoais | Sim | Sim | Nao | Nao |
+| Res: Prontuario | Sim | Sim | Sim | Sim |
+| Res: PIA | Sim | Sim | Sim | Sim |
+| Atendimento | Sim | Nao | Sim | Sim |
+| Atend: Psicologia | Sim | Nao | Sim | Nao |
+| Atend: Nutricao | Sim | Nao | Nao | Sim |
+| Configuracoes | Sim | Nao | Nao | Nao |
 
 ---
 
-### 4. Mural (Chat Institucional)
+### 3. Alteracoes nos Componentes
 
-**Localizacao**: Icone na top bar (header do `AppLayout.tsx`) com badge de nao-lidas. Abre como sheet/drawer lateral.
+#### `AppSidebar.tsx`
+- Importar `useUserRole`
+- Filtrar `menuItems` baseado em `canAccess`: ocultar itens do menu que o usuario nao pode acessar
+- Triagens: visivel apenas para admin e social_worker
+- Atendimento: visivel para admin, psicologo, nutricionista
+- Configuracoes: visivel apenas para admin
 
-**Arquivos novos**:
-- `src/components/mural/MuralSheet.tsx` — drawer/sheet com o chat
-- `src/components/mural/MuralBadge.tsx` — icone + badge de nao-lidas para o header
-- `src/hooks/useMural.ts` — hook para mensagens + leitura
+#### `ResidentForm.tsx`
+- Importar `useUserRole`
+- Ocultar abas (Familiares, Financeiro, Itens) para psicologo e nutricionista
+- Manter Dados Pessoais, Prontuario e PIA visiveis para todos
 
-**Funcionamento**:
-- `useMural` busca mensagens da `mural_messages` filtradas por `organization_id` do usuario
-- Exibe em formato chat (mais recente embaixo), com avatar/nome do autor, data/hora, conteudo
-- Campo de input na parte inferior para postar nova mensagem
-- Badge: conta mensagens com `created_at > last_read_at` do usuario. Ao abrir, faz upsert em `mural_reads`
-- **Exportacao**:
-  - Botao "Exportar" no topo do mural
-  - Opcoes: "Por data" (seletor de data, gera texto de todas as mensagens daquele dia) ou clicar em mensagem especifica
-  - Gera texto formatado: `[DD/MM/YYYY HH:mm] Nome: Mensagem`
-  - Botoes "Copiar" e "Enviar no WhatsApp" (abre `https://wa.me/{telefone}?text={texto}` usando telefone configurado)
-- `source_type` e `source_resident_name` permitem identificar mensagens que vieram de campos "mural" das competencias (preparado para integracao futura)
+#### `AtendimentoMultidisciplinar.tsx`
+- Importar `useUserRole`
+- Filtrar competencias visiveis: psicologo ve apenas Psicologia, nutricionista ve apenas Nutricao, admin ve tudo
 
-**Alteracao em `AppLayout.tsx`**: Adicionar `MuralBadge` no header ao lado do `SidebarTrigger`
+#### `AppLayout.tsx`
+- Adicionar verificacao: se usuario tenta acessar rota sem permissao (ex: `/triagens` sendo nutricionista), exibir mensagem "Voce nao tem permissao para acessar esta area." ao inves do conteudo
 
-**Alteracao em `Settings.tsx`**: Adicionar campo "Telefone WhatsApp do Mural" na aba Instituicao
+#### `Settings.tsx`
+- Visivel apenas para admin (ja controlado pelo menu, mas proteger tambem a rota)
+- Atualizar o Select de papel no convite para incluir os novos papeis:
+  - Administrador (`admin`)
+  - Assistente Social (`social_worker`)
+  - Psicologia (`psicologo`)
+  - Nutricionista (`nutricionista`)
+- Remover `coordinator` e `viewer` que nao sao usados no novo modelo
+- Adicionar funcionalidade para admin editar papel de usuarios existentes
+- Admin pode redefinir senha de outros usuarios (botao ao lado de cada membro)
 
-**Alteracao em `organizations`**: Adicionar coluna `mural_whatsapp_phone`
+#### Redefinicao de Senha
+- Cada usuario pode alterar sua propria senha: adicionar secao "Minha Conta" no Settings ou um novo item acessivel a todos
+- Admin pode redefinir senha de outros: usar edge function que chama `supabase.auth.admin.updateUser`
 
 ---
 
-### 5. Resumo de Entregas
+### 4. Edge Function — `reset-user-password`
+
+Nova edge function: `supabase/functions/reset-user-password/index.ts`
+
+- Recebe `user_id` e `new_password`
+- Verifica que o chamador e admin da mesma organizacao
+- Usa `supabase.auth.admin.updateUser({ password })` com service role key
+- Retorna sucesso ou erro
+
+---
+
+### 5. Pagina/Secao "Minha Conta"
+
+Adicionar aba "Minha Conta" no Settings (acessivel a TODOS os papeis, nao apenas admin):
+- Exibe nome do usuario e papel (read-only)
+- Campo para alterar senha propria (senha atual + nova senha + confirmacao)
+- Usa `supabase.auth.updateUser({ password })` do lado do cliente
+
+A aba "Instituicao" e "Controle de Acesso" continuam restritas ao admin.
+
+---
+
+### 6. Resumo de Entregas
 
 | Item | Tipo |
 |------|------|
-| 5 tabelas novas (pia, pia_goals, pia_revisions, mural_messages, mural_reads) | Migration SQL |
-| 1 coluna nova em organizations | Migration SQL |
-| RLS para todas as tabelas | Migration SQL |
-| ProntuarioTab.tsx + useMultidisciplinaryRecord.ts | Componentes React |
-| PIATab.tsx + usePIA.ts | Componentes React |
-| MuralSheet.tsx + MuralBadge.tsx + useMural.ts | Componentes React |
-| Alteracao ResidentForm.tsx (2 abas novas) | Edicao |
-| Alteracao AppLayout.tsx (badge mural) | Edicao |
-| Alteracao Settings.tsx (campo whatsapp) | Edicao |
+| 2 novos valores na enum `app_role` | Migration SQL |
+| Hook `useUserRole.ts` com matriz de permissoes | Hook React |
+| Edge function `reset-user-password` | Backend |
+| AppSidebar.tsx — menu filtrado por papel | Edicao |
+| ResidentForm.tsx — abas filtradas por papel | Edicao |
+| AtendimentoMultidisciplinar.tsx — competencias filtradas | Edicao |
+| AppLayout.tsx — bloqueio de rota sem permissao | Edicao |
+| Settings.tsx — novos papeis + redefinir senha + minha conta | Edicao |
 
-Nenhuma alteracao em sidebar, rotas, triagens, competencias existentes ou qualquer outro modulo.
+Nenhuma alteracao em tabelas existentes, RLS, ou modulos nao mencionados.
 
