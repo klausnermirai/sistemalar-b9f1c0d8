@@ -8,6 +8,7 @@ import { Search, User, Archive, ArrowRight, ThumbsUp, ThumbsDown } from "lucide-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ArchiveModal } from "./ArchiveModal";
 import { toast } from "sonner";
 
 export function ParecerMedicoTab() {
@@ -17,6 +18,7 @@ export function ParecerMedicoTab() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [medicalStatus, setMedicalStatus] = useState<string>("");
   const [medicalOpinion, setMedicalOpinion] = useState("");
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   const filtered = candidates.filter((c) =>
     c.elder_name.toLowerCase().includes(search.toLowerCase())
@@ -43,32 +45,15 @@ export function ParecerMedicoTab() {
     if (!selectedId || medicalStatus !== "favoravel") return;
     updateCandidate.mutate(
       { id: selectedId, stage: "integracao" as any, medical_status: medicalStatus, medical_opinion: medicalOpinion } as any,
-      {
-        onSuccess: () => {
-          toast.success("Encaminhado para Integração");
-          setSelectedId(null);
-        },
-      }
+      { onSuccess: () => { toast.success("Encaminhado para Integração"); setSelectedId(null); } }
     );
   };
 
-  const handleArchiveInapto = () => {
+  const handleArchive = (reason: string) => {
     if (!selectedId) return;
     updateCandidate.mutate(
-      {
-        id: selectedId,
-        stage: "arquivado" as any,
-        medical_status: "desfavoravel",
-        medical_opinion: medicalOpinion,
-        archive_reason: "Inapto Clínico",
-        archived_at: new Date().toISOString(),
-      } as any,
-      {
-        onSuccess: () => {
-          toast.success("Candidato arquivado como Inapto Clínico");
-          setSelectedId(null);
-        },
-      }
+      { id: selectedId, stage: "arquivado" as any, medical_status: medicalStatus, medical_opinion: medicalOpinion, archive_reason: reason, archived_at: new Date().toISOString() } as any,
+      { onSuccess: () => { toast.success("Candidato arquivado"); setArchiveOpen(false); setSelectedId(null); } }
     );
   };
 
@@ -97,7 +82,7 @@ export function ParecerMedicoTab() {
                     <p className="font-bold text-foreground">{c.elder_name}</p>
                   </div>
                   {ms && (
-                    <Badge className={ms === "favoravel" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                    <Badge className={ms === "favoravel" ? "bg-secondary text-secondary-foreground" : "bg-destructive text-destructive-foreground"}>
                       {ms === "favoravel" ? "Apto" : "Inapto"}
                     </Badge>
                   )}
@@ -108,54 +93,34 @@ export function ParecerMedicoTab() {
         </div>
       )}
 
-      <Dialog open={!!selectedId} onOpenChange={(o) => !o && setSelectedId(null)}>
+      <Dialog open={!!selectedId && !archiveOpen} onOpenChange={(o) => !o && setSelectedId(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{selected?.elder_name}</DialogTitle>
             <DialogDescription>Avaliação clínica do candidato</DialogDescription>
           </DialogHeader>
-
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Parecer Médico</Label>
               <div className="flex gap-2">
-                <Button
-                  variant={medicalStatus === "favoravel" ? "default" : "outline"}
-                  onClick={() => setMedicalStatus("favoravel")}
-                  className="flex-1"
-                >
+                <Button variant={medicalStatus === "favoravel" ? "default" : "outline"} onClick={() => setMedicalStatus("favoravel")} className="flex-1">
                   <ThumbsUp className="h-4 w-4 mr-2" /> Apto
                 </Button>
-                <Button
-                  variant={medicalStatus === "desfavoravel" ? "destructive" : "outline"}
-                  onClick={() => setMedicalStatus("desfavoravel")}
-                  className="flex-1"
-                >
+                <Button variant={medicalStatus === "desfavoravel" ? "destructive" : "outline"} onClick={() => setMedicalStatus("desfavoravel")} className="flex-1">
                   <ThumbsDown className="h-4 w-4 mr-2" /> Inapto
                 </Button>
               </div>
             </div>
-
             <div className="space-y-2">
               <Label>Observações Médicas</Label>
-              <Textarea
-                placeholder="Observações da avaliação clínica..."
-                value={medicalOpinion}
-                onChange={(e) => setMedicalOpinion(e.target.value)}
-                rows={4}
-              />
+              <Textarea placeholder="Observações da avaliação clínica..." value={medicalOpinion} onChange={(e) => setMedicalOpinion(e.target.value)} rows={4} />
             </div>
           </div>
-
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={handleSave} disabled={updateCandidate.isPending}>
-              Salvar
+            <Button variant="outline" onClick={handleSave} disabled={updateCandidate.isPending}>Salvar</Button>
+            <Button variant="destructive" onClick={() => setArchiveOpen(true)}>
+              <Archive className="h-4 w-4 mr-2" /> Arquivar
             </Button>
-            {medicalStatus === "desfavoravel" && (
-              <Button variant="destructive" onClick={handleArchiveInapto} disabled={updateCandidate.isPending}>
-                <Archive className="h-4 w-4 mr-2" /> Arquivar (Inapto Clínico)
-              </Button>
-            )}
             {medicalStatus === "favoravel" && (
               <Button onClick={handleSendToIntegracao} disabled={updateCandidate.isPending}>
                 <ArrowRight className="h-4 w-4 mr-2" /> Seguir para Integração
@@ -164,6 +129,14 @@ export function ParecerMedicoTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ArchiveModal
+        open={archiveOpen}
+        onClose={() => setArchiveOpen(false)}
+        onConfirm={handleArchive}
+        isPending={updateCandidate.isPending}
+        candidateName={selected?.elder_name}
+      />
     </div>
   );
 }

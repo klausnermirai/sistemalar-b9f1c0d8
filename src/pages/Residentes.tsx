@@ -3,6 +3,7 @@ import { useResidents, Resident } from "@/hooks/useResidents";
 import { ResidentList } from "@/components/residentes/ResidentList";
 import { ResidentForm } from "@/components/residentes/ResidentForm";
 import { ImportResidents } from "@/components/residentes/ImportResidents";
+import { OccupancyPanel } from "@/components/shared/OccupancyPanel";
 
 export default function Residentes() {
   const { data: residents = [], isLoading, refetch } = useResidents();
@@ -33,6 +34,8 @@ export default function Residentes() {
         </div>
         <ImportResidents onDone={() => refetch()} />
       </div>
+
+      <OccupancyPanel />
 
       <ResidentList
         residents={residents}

@@ -7,6 +7,7 @@ import { Search, User, Archive, ArrowRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ArchiveModal } from "./ArchiveModal";
 import { toast } from "sonner";
 
 export function DiretoriaTab() {
@@ -16,7 +17,6 @@ export function DiretoriaTab() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [boardOpinion, setBoardOpinion] = useState("");
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [archiveReason, setArchiveReason] = useState("");
 
   const filtered = candidates.filter((c) =>
     c.elder_name.toLowerCase().includes(search.toLowerCase())
@@ -45,32 +45,15 @@ export function DiretoriaTab() {
     }
     updateCandidate.mutate(
       { id: selectedId, stage: "avaliacao_medica" as any, board_opinion: boardOpinion } as any,
-      {
-        onSuccess: () => {
-          toast.success("Encaminhado para Parecer Médico");
-          setSelectedId(null);
-        },
-      }
+      { onSuccess: () => { toast.success("Encaminhado para Parecer Médico"); setSelectedId(null); } }
     );
   };
 
-  const handleArchive = () => {
-    if (!selectedId || !archiveReason.trim()) return;
+  const handleArchive = (reason: string) => {
+    if (!selectedId) return;
     updateCandidate.mutate(
-      {
-        id: selectedId,
-        stage: "arquivado" as any,
-        archive_reason: archiveReason,
-        archived_at: new Date().toISOString(),
-      },
-      {
-        onSuccess: () => {
-          toast.success("Candidato arquivado");
-          setArchiveOpen(false);
-          setArchiveReason("");
-          setSelectedId(null);
-        },
-      }
+      { id: selectedId, stage: "arquivado" as any, archive_reason: reason, archived_at: new Date().toISOString() },
+      { onSuccess: () => { toast.success("Candidato arquivado"); setArchiveOpen(false); setSelectedId(null); } }
     );
   };
 
@@ -108,21 +91,12 @@ export function DiretoriaTab() {
             <DialogTitle>{selected?.elder_name}</DialogTitle>
             <DialogDescription>Registre o parecer oficial da diretoria / ata de reunião</DialogDescription>
           </DialogHeader>
-
           <div className="space-y-2">
             <Label>Parecer da Diretoria *</Label>
-            <Textarea
-              placeholder="Registre a decisão oficial / ata de reunião..."
-              value={boardOpinion}
-              onChange={(e) => setBoardOpinion(e.target.value)}
-              rows={5}
-            />
+            <Textarea placeholder="Registre a decisão oficial / ata de reunião..." value={boardOpinion} onChange={(e) => setBoardOpinion(e.target.value)} rows={5} />
           </div>
-
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={handleSave} disabled={updateCandidate.isPending}>
-              Salvar
-            </Button>
+            <Button variant="outline" onClick={handleSave} disabled={updateCandidate.isPending}>Salvar</Button>
             <Button variant="destructive" onClick={() => setArchiveOpen(true)}>
               <Archive className="h-4 w-4 mr-2" /> Arquivar
             </Button>
@@ -133,21 +107,13 @@ export function DiretoriaTab() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Arquivar Candidato</DialogTitle>
-            <DialogDescription>Informe o motivo do arquivamento</DialogDescription>
-          </DialogHeader>
-          <Textarea placeholder="Motivo do arquivamento..." value={archiveReason} onChange={(e) => setArchiveReason(e.target.value)} />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setArchiveOpen(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleArchive} disabled={!archiveReason.trim() || updateCandidate.isPending}>
-              Confirmar Arquivamento
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ArchiveModal
+        open={archiveOpen}
+        onClose={() => setArchiveOpen(false)}
+        onConfirm={handleArchive}
+        isPending={updateCandidate.isPending}
+        candidateName={selected?.elder_name}
+      />
     </div>
   );
 }

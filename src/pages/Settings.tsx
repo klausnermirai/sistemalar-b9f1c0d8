@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { UserPlus, Trash2, Building2, Users, KeyRound, User } from "lucide-react";
+import { UserPlus, Trash2, Building2, Users, KeyRound, User, BedDouble, Plus, Pencil } from "lucide-react";
+import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom, Room } from "@/hooks/useRooms";
 
 const orgTypeLabels: Record<string, string> = {
   obra_unida: "Obra Unida (ILPI)",
@@ -86,7 +87,20 @@ export default function Settings() {
   const [resetPassword, setResetPassword] = useState("");
   const [resetting, setResetting] = useState(false);
 
-  // Admin edit role dialog
+  // Estrutura do Lar
+  const [maleBeds, setMaleBeds] = useState(30);
+  const [femaleBeds, setFemaleBeds] = useState(22);
+  const [maleRooms, setMaleRooms] = useState(12);
+  const [femaleRooms, setFemaleRooms] = useState(8);
+  const [savingStructure, setSavingStructure] = useState(false);
+  const { data: rooms = [] } = useRooms();
+  const createRoom = useCreateRoom();
+  const updateRoom = useUpdateRoom();
+  const deleteRoom = useDeleteRoom();
+  const [roomOpen, setRoomOpen] = useState(false);
+  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [roomForm, setRoomForm] = useState({ identifier: "", type: "masculino", beds: 1, observations: "" });
+
   const [editRoleTarget, setEditRoleTarget] = useState<OrgMember | null>(null);
   const [editRoleValue, setEditRoleValue] = useState("");
   const [editingRole, setEditingRole] = useState(false);
@@ -113,6 +127,10 @@ export default function Settings() {
       setOrgCentral(data.central_council_name || "");
       setOrgMetro(data.metropolitan_council_name || "");
       setOrgWhatsapp((data as any).mural_whatsapp_phone || "");
+      setMaleBeds((data as any).total_male_beds ?? 30);
+      setFemaleBeds((data as any).total_female_beds ?? 22);
+      setMaleRooms((data as any).total_male_rooms ?? 12);
+      setFemaleRooms((data as any).total_female_rooms ?? 8);
     }
   }
 
@@ -281,6 +299,11 @@ export default function Settings() {
           {isAdmin && (
             <TabsTrigger value="acesso" className="gap-2">
               <Users className="h-4 w-4" /> Controle de Acesso
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="estrutura" className="gap-2">
+              <BedDouble className="h-4 w-4" /> Estrutura do Lar
             </TabsTrigger>
           )}
         </TabsList>
@@ -508,6 +531,156 @@ export default function Settings() {
                   </div>
                   <Button type="submit" className="w-full rounded-xl font-bold uppercase tracking-wider" disabled={editingRole}>
                     {editingRole ? "Salvando..." : "Salvar"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+        )}
+
+        {/* Estrutura do Lar - admin only */}
+        {isAdmin && (
+          <TabsContent value="estrutura">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-bold uppercase tracking-wide">Estrutura do Lar</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  setSavingStructure(true);
+                  try {
+                    const { error } = await supabase.from("organizations").update({
+                      total_male_beds: maleBeds,
+                      total_female_beds: femaleBeds,
+                      total_male_rooms: maleRooms,
+                      total_female_rooms: femaleRooms,
+                    } as any).eq("id", userOrgId!);
+                    if (error) throw error;
+                    toast({ title: "Estrutura atualizada!" });
+                  } catch (err: any) {
+                    toast({ title: "Erro", description: err.message, variant: "destructive" });
+                  } finally {
+                    setSavingStructure(false);
+                  }
+                }} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider">Vagas Masculinas</Label>
+                      <Input type="number" value={maleBeds} onChange={(e) => setMaleBeds(Number(e.target.value))} className="h-11 rounded-xl" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider">Vagas Femininas</Label>
+                      <Input type="number" value={femaleBeds} onChange={(e) => setFemaleBeds(Number(e.target.value))} className="h-11 rounded-xl" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider">Quartos Masculinos</Label>
+                      <Input type="number" value={maleRooms} onChange={(e) => setMaleRooms(Number(e.target.value))} className="h-11 rounded-xl" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider">Quartos Femininos</Label>
+                      <Input type="number" value={femaleRooms} onChange={(e) => setFemaleRooms(Number(e.target.value))} className="h-11 rounded-xl" />
+                    </div>
+                  </div>
+                  <Button type="submit" className="h-11 rounded-xl font-bold uppercase tracking-wider" disabled={savingStructure}>
+                    {savingStructure ? "Salvando..." : "Salvar Vagas"}
+                  </Button>
+                </form>
+
+                <div className="border-t pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider">Cadastro de Quartos</h3>
+                    <Button size="sm" className="gap-2 rounded-xl font-bold uppercase text-xs tracking-wider" onClick={() => {
+                      setEditingRoom(null);
+                      setRoomForm({ identifier: "", type: "masculino", beds: 1, observations: "" });
+                      setRoomOpen(true);
+                    }}>
+                      <Plus className="h-4 w-4" /> Novo Quarto
+                    </Button>
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs font-bold uppercase tracking-wider">Identificador</TableHead>
+                        <TableHead className="text-xs font-bold uppercase tracking-wider">Tipo</TableHead>
+                        <TableHead className="text-xs font-bold uppercase tracking-wider">Camas</TableHead>
+                        <TableHead className="text-xs font-bold uppercase tracking-wider">Obs</TableHead>
+                        <TableHead className="w-24 text-xs font-bold uppercase tracking-wider">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rooms.map((r) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="font-medium">{r.identifier}</TableCell>
+                          <TableCell><Badge variant="secondary">{r.type === "masculino" ? "Masculino" : "Feminino"}</Badge></TableCell>
+                          <TableCell>{r.beds}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{r.observations || "—"}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => {
+                                setEditingRoom(r);
+                                setRoomForm({ identifier: r.identifier, type: r.type, beds: r.beds, observations: r.observations || "" });
+                                setRoomOpen(true);
+                              }}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteRoom.mutate(r.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {rooms.length === 0 && (
+                        <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Nenhum quarto cadastrado</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Dialog open={roomOpen} onOpenChange={setRoomOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle className="font-bold uppercase tracking-wide">{editingRoom ? "Editar Quarto" : "Novo Quarto"}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    if (editingRoom) {
+                      await updateRoom.mutateAsync({ id: editingRoom.id, ...roomForm });
+                    } else {
+                      await createRoom.mutateAsync(roomForm);
+                    }
+                    setRoomOpen(false);
+                    toast({ title: editingRoom ? "Quarto atualizado!" : "Quarto criado!" });
+                  } catch (err: any) {
+                    toast({ title: "Erro", description: err.message, variant: "destructive" });
+                  }
+                }} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Identificador *</Label>
+                    <Input value={roomForm.identifier} onChange={(e) => setRoomForm({ ...roomForm, identifier: e.target.value })} required className="rounded-xl" placeholder="Ex: Q01" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Tipo</Label>
+                    <Select value={roomForm.type} onValueChange={(v) => setRoomForm({ ...roomForm, type: v })}>
+                      <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="masculino">Masculino</SelectItem>
+                        <SelectItem value="feminino">Feminino</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Quantidade de Camas</Label>
+                    <Input type="number" value={roomForm.beds} onChange={(e) => setRoomForm({ ...roomForm, beds: Number(e.target.value) })} min={1} className="rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Observações</Label>
+                    <Input value={roomForm.observations} onChange={(e) => setRoomForm({ ...roomForm, observations: e.target.value })} className="rounded-xl" />
+                  </div>
+                  <Button type="submit" className="w-full rounded-xl font-bold uppercase tracking-wider" disabled={createRoom.isPending || updateRoom.isPending}>
+                    {editingRoom ? "Salvar" : "Criar Quarto"}
                   </Button>
                 </form>
               </DialogContent>

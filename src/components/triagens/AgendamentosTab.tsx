@@ -6,10 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Phone, MapPin, Calendar, User } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
+import { ArchiveModal } from "./ArchiveModal";
 
 type Candidate = Tables<"candidates">;
 
@@ -35,9 +35,7 @@ export function AgendamentosTab() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
-  const [archiveReason, setArchiveReason] = useState("");
 
-  // New candidate form state
   const [newForm, setNewForm] = useState({
     elder_name: "",
     phone: "",
@@ -77,18 +75,17 @@ export function AgendamentosTab() {
     }
   }
 
-  async function handleArchive() {
-    if (!selectedCandidate || !archiveReason) return;
+  async function handleArchive(reason: string) {
+    if (!selectedCandidate) return;
     try {
       await updateCandidate.mutateAsync({
         id: selectedCandidate.id,
         stage: "arquivado",
-        archive_reason: archiveReason,
+        archive_reason: reason,
         archived_at: new Date().toISOString(),
       });
       setShowArchiveModal(false);
       setSelectedCandidate(null);
-      setArchiveReason("");
       toast({ title: "Candidato arquivado." });
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -97,24 +94,16 @@ export function AgendamentosTab() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar candidato..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+          <Input placeholder="Buscar candidato..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
         <Button onClick={() => setShowNewModal(true)} className="font-bold uppercase text-xs tracking-wider">
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Agendamento
+          <Plus className="mr-2 h-4 w-4" /> Novo Agendamento
         </Button>
       </div>
 
-      {/* List */}
       {isLoading ? (
         <div className="text-center py-8 text-muted-foreground">Carregando...</div>
       ) : filtered.length === 0 ? (
@@ -122,11 +111,7 @@ export function AgendamentosTab() {
       ) : (
         <div className="grid gap-3">
           {filtered.map((c) => (
-            <Card
-              key={c.id}
-              className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => setSelectedCandidate(c)}
-            >
+            <Card key={c.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedCandidate(c)}>
               <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-4">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -135,27 +120,13 @@ export function AgendamentosTab() {
                   <div>
                     <p className="font-bold text-foreground">{c.elder_name}</p>
                     <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
-                      {c.phone && (
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" /> {c.phone}
-                        </span>
-                      )}
-                      {c.visit_address && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" /> {c.visit_address}
-                        </span>
-                      )}
-                      {c.contact_date && (
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" /> {new Date(c.contact_date).toLocaleDateString("pt-BR")}
-                        </span>
-                      )}
+                      {c.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {c.phone}</span>}
+                      {c.visit_address && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {c.visit_address}</span>}
+                      {c.contact_date && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {new Date(c.contact_date).toLocaleDateString("pt-BR")}</span>}
                     </div>
                   </div>
                 </div>
-                <Badge className={priorityColors[c.priority]}>
-                  {priorityLabels[c.priority]}
-                </Badge>
+                <Badge className={priorityColors[c.priority]}>{priorityLabels[c.priority]}</Badge>
               </CardContent>
             </Card>
           ))}
@@ -172,33 +143,19 @@ export function AgendamentosTab() {
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="space-y-2">
               <Label className="uppercase text-xs font-bold tracking-wider">Nome do Idoso *</Label>
-              <Input
-                value={newForm.elder_name}
-                onChange={(e) => setNewForm({ ...newForm, elder_name: e.target.value })}
-                required
-              />
+              <Input value={newForm.elder_name} onChange={(e) => setNewForm({ ...newForm, elder_name: e.target.value })} required />
             </div>
             <div className="space-y-2">
               <Label className="uppercase text-xs font-bold tracking-wider">Telefone</Label>
-              <Input
-                value={newForm.phone}
-                onChange={(e) => setNewForm({ ...newForm, phone: e.target.value })}
-              />
+              <Input value={newForm.phone} onChange={(e) => setNewForm({ ...newForm, phone: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label className="uppercase text-xs font-bold tracking-wider">Data do Contato</Label>
-              <Input
-                type="date"
-                value={newForm.contact_date}
-                onChange={(e) => setNewForm({ ...newForm, contact_date: e.target.value })}
-              />
+              <Input type="date" value={newForm.contact_date} onChange={(e) => setNewForm({ ...newForm, contact_date: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label className="uppercase text-xs font-bold tracking-wider">Endereço da Visita</Label>
-              <Input
-                value={newForm.visit_address}
-                onChange={(e) => setNewForm({ ...newForm, visit_address: e.target.value })}
-              />
+              <Input value={newForm.visit_address} onChange={(e) => setNewForm({ ...newForm, visit_address: e.target.value })} />
             </div>
             <DialogFooter>
               <Button type="submit" className="font-bold uppercase" disabled={createCandidate.isPending}>
@@ -213,61 +170,27 @@ export function AgendamentosTab() {
       <Dialog open={!!selectedCandidate && !showArchiveModal} onOpenChange={() => setSelectedCandidate(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-extrabold uppercase tracking-wide">
-              Gerenciar Etapa
-            </DialogTitle>
-            <DialogDescription>
-              {selectedCandidate?.elder_name} — escolha uma ação
-            </DialogDescription>
+            <DialogTitle className="font-extrabold uppercase tracking-wide">Gerenciar Etapa</DialogTitle>
+            <DialogDescription>{selectedCandidate?.elder_name} — escolha uma ação</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Button
-              className="w-full font-bold uppercase"
-              onClick={handleMoveToInterview}
-              disabled={updateCandidate.isPending}
-            >
+            <Button className="w-full font-bold uppercase" onClick={handleMoveToInterview} disabled={updateCandidate.isPending}>
               Evoluir para Entrevista
             </Button>
-            <Button
-              variant="destructive"
-              className="w-full font-bold uppercase"
-              onClick={() => setShowArchiveModal(true)}
-            >
+            <Button variant="destructive" className="w-full font-bold uppercase" onClick={() => setShowArchiveModal(true)}>
               Arquivar Candidato
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Archive Modal */}
-      <Dialog open={showArchiveModal} onOpenChange={(open) => { if (!open) { setShowArchiveModal(false); } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="font-extrabold uppercase tracking-wide">Arquivar Candidato</DialogTitle>
-            <DialogDescription>Selecione o motivo do arquivamento.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Select value={archiveReason} onValueChange={setArchiveReason}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o motivo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Inapto Clínico">Inapto Clínico</SelectItem>
-                <SelectItem value="Desistência">Desistência</SelectItem>
-                <SelectItem value="Falecimento">Falecimento</SelectItem>
-                <SelectItem value="Mudança">Mudança</SelectItem>
-                <SelectItem value="Outro">Outro</SelectItem>
-              </SelectContent>
-            </Select>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowArchiveModal(false)}>Cancelar</Button>
-              <Button variant="destructive" onClick={handleArchive} disabled={!archiveReason || updateCandidate.isPending}>
-                Confirmar
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ArchiveModal
+        open={showArchiveModal}
+        onClose={() => setShowArchiveModal(false)}
+        onConfirm={handleArchive}
+        isPending={updateCandidate.isPending}
+        candidateName={selectedCandidate?.elder_name}
+      />
     </div>
   );
 }
