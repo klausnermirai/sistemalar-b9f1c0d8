@@ -1,117 +1,66 @@
 
 
-## Melhorias: Cards Clicaveis + Arquivamento Flexivel + Controle de Vagas + Indicadores
+## Arquivamento de Residentes + Confirmacao dos Indicadores
 
-### 1. Cards Clicaveis na Triagem (remover tabs duplicadas)
+### 1. Indicadores de Ocupacao (ja implementado)
 
-**Arquivos alterados**: `StatusCards.tsx`, `Triagens.tsx`
+O painel `OccupancyPanel` ja esta funcionando na guia Residentes. Ele:
+- Conta residentes ativos por sexo (`masculino` / `feminino`) na tabela `residents`
+- Busca vagas configuradas em `organizations` (`total_male_beds`, `total_female_beds`)
+- Calcula vagas disponiveis automaticamente
+- Atualiza em tempo real quando residentes sao acolhidos ou arquivados
 
-- `StatusCards` recebe callback `onStageClick(stage)` e remove o card "Acolhidos"
-- Cada card fica clicavel, com visual de selecionado (borda/cor) para o stage ativo
-- `Triagens.tsx` remove o `TabsList` (botoes duplicados) e os TabsTriggers de "Acolhidos" e "Arquivados"
-- A navegacao passa a ser feita exclusivamente pelos cards — ao clicar, seta o `activeTab` correspondente
-- Manter o `TabsContent` para renderizar o conteudo de cada etapa
-- Adicionar novo tab "arquivados" com componente `ArquivadosTab` para consulta do historico
-
-**Novo arquivo**: `src/components/triagens/ArquivadosTab.tsx`
-- Lista candidatos com `stage = "arquivado"`, exibindo nome, motivo e data do arquivamento
-- Somente leitura (consulta)
+Nenhuma alteracao necessaria neste ponto.
 
 ---
 
-### 2. Arquivamento Flexivel em Todas as Etapas
+### 2. Arquivamento de Residentes (nova funcionalidade)
 
-**Arquivos alterados**: `EntrevistasTab.tsx`, `FilaEsperaTab.tsx`, `DiretoriaTab.tsx`, `ParecerMedicoTab.tsx`, `IntegracaoTab.tsx`
+Adicionar botao "Arquivar" na lista de residentes e um modal com motivos especificos para residentes.
 
-Cada aba de etapa que ainda nao tem, recebe um modal padronizado de arquivamento com:
-- Select obrigatorio com motivos fixos:
-  - Institucionalizado em outro local
-  - Falecimento
-  - Desistencia do idoso
-  - Desistencia familiar
-- Campo opcional de descricao complementar (textarea)
-- Ao confirmar: `stage = "arquivado"`, `archive_reason = motivo selecionado`, `archived_at = now()`
+#### Componente: `ResidentArchiveModal.tsx` (novo)
 
-O `AgendamentosTab` ja possui modal de arquivamento — sera atualizado para usar a nova lista de motivos padronizados.
+Modal reutilizavel similar ao `ArchiveModal` de triagens, mas com motivos proprios:
+- **Desacolhimento** (saida voluntaria ou por decisao)
+- **Falecimento**
+- **Transferencia para outra instituicao**
+- **Outros**
 
-**Novo componente reutilizavel**: `src/components/triagens/ArchiveModal.tsx`
-- Recebe `open`, `onClose`, `onConfirm`, `isPending`
-- Contem o Select de motivos + textarea opcional
-- Todas as tabs importam este componente ao inves de duplicar a logica
+Campos:
+- Motivo (obrigatorio, lista suspensa)
+- Data de saida (obrigatorio, pre-preenchido com data atual)
+- Descricao complementar (opcional, texto livre)
 
----
+#### Alteracao: `ResidentList.tsx`
 
-### 3. Controle de Vagas (Configuracoes)
+- Adicionar botao "Arquivar" (icone Archive) ao lado do botao de visualizar na tabela
+- Ao clicar, abre o `ResidentArchiveModal`
+- Ao confirmar, atualiza o residente com:
+  - `status = "desacolhido"` (ou `"falecido"`)
+  - `discharge_date = data informada`
+  - `discharge_reason = motivo + descricao`
+- Invalida queries `["residents"]` e `["occupancy"]` para atualizar contagens
 
-**Banco de dados**: Nova tabela `rooms` + novas colunas em `organizations`
+#### Alteracao: `useResidents.ts`
 
-Migration SQL:
-```sql
-ALTER TABLE organizations ADD COLUMN IF NOT EXISTS total_male_beds integer NOT NULL DEFAULT 30;
-ALTER TABLE organizations ADD COLUMN IF NOT EXISTS total_female_beds integer NOT NULL DEFAULT 22;
-ALTER TABLE organizations ADD COLUMN IF NOT EXISTS total_male_rooms integer NOT NULL DEFAULT 12;
-ALTER TABLE organizations ADD COLUMN IF NOT EXISTS total_female_rooms integer NOT NULL DEFAULT 8;
+- Adicionar mutation `useArchiveResident` que faz o update de `status`, `discharge_date` e `discharge_reason`
+- Invalida as queries de residentes e ocupacao
 
-CREATE TABLE public.rooms (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id),
-  identifier text NOT NULL,
-  type text NOT NULL DEFAULT 'masculino',
-  beds integer NOT NULL DEFAULT 1,
-  observations text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-ALTER TABLE rooms ENABLE ROW LEVEL SECURITY;
--- RLS: mesmas politicas padrao por org
-```
+#### Alteracao: `ResidentList.tsx` — Filtro de status
 
-**Arquivo alterado**: `Settings.tsx`
-- Nova aba (visivel para admin): "Estrutura do Lar"
-- Campos editaveis: vagas masculinas, femininas, quartos masculinos, femininos
-- Tabela de quartos: listar, criar, editar, excluir quartos (identificador, tipo, camas, obs)
-- Salvar atualiza `organizations` e `rooms`
-
-**Novo hook**: `src/hooks/useRooms.ts`
-- CRUD para tabela `rooms`
+- Adicionar filtro para mostrar "Ativos" ou "Todos" (incluindo arquivados)
+- Por padrao, exibir apenas residentes ativos (`status = "ativo"`)
+- Badge com cores diferenciadas: verde para "Ativo", cinza para "Desacolhido", vermelho para "Falecido"
 
 ---
 
-### 4. Indicadores de Vagas no Topo (Triagens + Residentes)
+### 3. Resumo de Arquivos
 
-**Novo componente**: `src/components/shared/OccupancyPanel.tsx`
-- Busca dados de `organizations` (vagas configuradas) e conta residentes ativos por genero
-- Exibe painel com:
-  - ACOLHIDOS: X Homens | X Mulheres
-  - VAGAS DISPONIVEIS: X Homens | X Mulheres
-- Calculo: vagas disponiveis = vagas configuradas - residentes ativos do genero
-- Visual: cards coloridos compactos no topo
+| Arquivo | Acao |
+|---------|------|
+| `src/components/residentes/ResidentArchiveModal.tsx` | Novo componente |
+| `src/components/residentes/ResidentList.tsx` | Adicionar botao arquivar + filtro de status |
+| `src/hooks/useResidents.ts` | Adicionar `useArchiveResident` mutation |
 
-**Novo hook**: `src/hooks/useOccupancy.ts`
-- Query em `residents` filtrando `status = 'ativo'` e agrupando por `gender`
-- Query em `organizations` para buscar `total_male_beds` e `total_female_beds`
-- Retorna `{ maleResidents, femaleResidents, maleBeds, femaleBeds, maleAvailable, femaleAvailable }`
-
-**Arquivos alterados**:
-- `Triagens.tsx`: adicionar `OccupancyPanel` abaixo do titulo, acima dos cards
-- `Residentes.tsx`: adicionar `OccupancyPanel` abaixo do titulo, acima da lista
-
----
-
-### 5. Resumo de Entregas
-
-| Item | Tipo |
-|------|------|
-| 4 colunas novas em `organizations` (vagas/quartos) | Migration |
-| Tabela `rooms` com RLS | Migration |
-| Cards clicaveis + remocao de tabs duplicadas | Edicao StatusCards + Triagens |
-| Remocao do card "Acolhidos" da triagem | Edicao StatusCards |
-| ArquivadosTab.tsx (lista de arquivados) | Novo componente |
-| ArchiveModal.tsx (modal padronizado) | Novo componente |
-| Arquivamento em todas as etapas com motivos padrao | Edicao de 6 tabs |
-| Secao "Estrutura do Lar" em Configuracoes | Edicao Settings |
-| useRooms.ts | Novo hook |
-| OccupancyPanel.tsx + useOccupancy.ts | Novos componentes |
-| Indicadores no topo de Triagens e Residentes | Edicao paginas |
-
-Nenhuma alteracao em modulos nao mencionados (Prontuario, PIA, Mural, Atendimento).
+Nenhuma alteracao no banco de dados necessaria — os campos `status`, `discharge_date` e `discharge_reason` ja existem na tabela `residents`.
 
