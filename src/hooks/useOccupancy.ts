@@ -21,8 +21,9 @@ export function useOccupancy() {
       let maleResidents = 0;
       let femaleResidents = 0;
       residentsRes.data?.forEach((r) => {
-        if (r.gender === "masculino") maleResidents++;
-        else if (r.gender === "feminino") femaleResidents++;
+        const g = r.gender?.toLowerCase();
+        if (g === "masculino") maleResidents++;
+        else if (g === "feminino") femaleResidents++;
       });
 
       return {
