@@ -112,3 +112,31 @@ export function useUpdateResident() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["residents"] }),
   });
 }
+
+export function useArchiveResident() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      status,
+      discharge_date,
+      discharge_reason,
+    }: {
+      id: string;
+      status: string;
+      discharge_date: string;
+      discharge_reason: string;
+    }) => {
+      const { error } = await supabase
+        .from("residents")
+        .update({ status, discharge_date, discharge_reason })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["residents"] });
+      qc.invalidateQueries({ queryKey: ["occupancy"] });
+    },
+  });
+}
