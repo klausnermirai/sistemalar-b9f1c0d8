@@ -1,148 +1,169 @@
 
 
-## Subguia Nutricionista no Atendimento Multidisciplinar
+## 3 Funcionalidades: Prontuario Multidisciplinar + PIA + Mural
 
 ### Visao Geral
 
-Adicionar a competencia **Nutricionista** dentro da pagina Atendimento Multidisciplinar, com 3 abas internas: **Primeira Avaliacao Nutricional**, **Evolucao Nutricional** e **Atendimentos**. Seguindo exatamente os mesmos padroes de codigo e visual da Psicologia ja implementada.
+Implementar 3 funcionalidades novas sem alterar nenhuma estrutura existente:
+1. **Prontuario Multidisciplinar** - timeline consolidada dentro de Residentes
+2. **PIA** - Plano Individual de Atendimento autoabastecido dentro de Residentes
+3. **Mural** - chat institucional com nao-lidas e exportacao WhatsApp
 
 ---
 
-### 1. Banco de Dados — 3 Novas Tabelas
+### 1. Banco de Dados — Novas Tabelas
 
-#### Tabela `nutrition_assessments` (Primeira Avaliacao Nutricional)
+#### Tabela `pia` (Plano Individual de Atendimento)
 
 | Coluna | Tipo | Obs |
 |--------|------|-----|
 | id | uuid PK | |
 | resident_id | uuid FK residents | |
-| date | date | default CURRENT_DATE |
-| weight_kg | numeric | |
-| height_m | numeric | |
-| imc | numeric | calculado no frontend |
-| circ_arm / circ_waist / circ_abdomen / circ_hip / circ_thigh / circ_calf | numeric | todas opcionais |
-| measurements_not_possible | boolean | default false |
-| chronic_diseases | jsonb | array de strings |
-| feeding_route | text | oral/sne/gtt |
-| recommended_consistency | text | normal/branda/pastosa/liquida_pastosa |
-| oral_health | jsonb | array de strings |
-| food_preferences | text | |
-| aversions_restrictions | text | |
-| severe_allergies | text | destaque visual |
-| sex | text | F/M |
-| age | numeric | calculado ou informado |
-| activity_level | text | sedentario/leve/moderado/intenso |
-| tmb | numeric | calculado |
-| get | numeric | calculado |
-| skinfold_tricipital / bicipital / subscapular / suprailiac | numeric | opcionais |
-| body_fat_percentage | numeric | estimado |
-| screening_score | numeric | triagem nutricional |
-| screening_classification | text | sem_risco/risco/alto_risco |
-| screening_observations | text | |
-| nutritional_diagnosis | text | conclusao PIA |
-| needs_supplementation | boolean | default false |
-| supplementation_details | text | |
-| pia_nutritional_goals | text | |
+| status | text | ativo/em_revisao/encerrado |
+| team_synthesis | text | sintese geral editavel |
+| interventions_psychology | text | plano intervencoes psico |
+| interventions_nutrition | text | plano intervencoes nutri |
+| interventions_other | text | outras competencias |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
-#### Tabela `nutrition_evolutions` (Evolucao Nutricional)
+#### Tabela `pia_goals` (Metas por competencia)
 
 | Coluna | Tipo |
 |--------|------|
 | id | uuid PK |
-| resident_id | uuid FK |
+| pia_id | uuid FK pia |
+| competency | text |
+| goal_text | text |
+| status | text |
+| review_deadline | date |
+| observations | text |
+| created_at | timestamptz |
+
+#### Tabela `pia_revisions` (Historico de revisoes)
+
+| Coluna | Tipo |
+|--------|------|
+| id | uuid PK |
+| pia_id | uuid FK pia |
 | date | date |
-| current_weight | numeric |
-| weight_variation_percent | numeric |
-| weight_alert | boolean | default false |
-| food_acceptance | text |
-| consistency_change | boolean | default false |
-| consistency_change_justification | text |
-| pia_goal_status | text |
-| new_conduct | text |
+| revised_by | text |
+| changes_description | text |
 | created_by | uuid |
 | created_at | timestamptz |
 
-#### Tabela `nutrition_attendances` (Atendimentos)
+#### Tabela `mural_messages` (Mural institucional)
 
 | Coluna | Tipo |
 |--------|------|
 | id | uuid PK |
-| resident_id | uuid FK |
-| date_time | timestamptz |
-| visit_reason | text |
-| attendance_notes | text |
-| mural_notes | text |
-| signature | text |
-| created_by | uuid |
+| organization_id | uuid FK organizations |
+| author_id | uuid |
+| author_name | text |
+| content | text |
+| source_type | text | nutricao/psicologia/manual/etc |
+| source_resident_name | text | nome do residente se aplicavel |
 | created_at | timestamptz |
 
-Todas com RLS identico ao padrao existente (join com `residents.organization_id` via `user_belongs_to_org`) e triggers `updated_at` onde aplicavel.
+#### Tabela `mural_reads` (Controle de leitura)
+
+| Coluna | Tipo |
+|--------|------|
+| id | uuid PK |
+| user_id | uuid |
+| organization_id | uuid FK |
+| last_read_at | timestamptz |
+
+Todas com RLS seguindo padrao existente (`user_belongs_to_org`). Triggers `updated_at` onde aplicavel.
+
+Adicionar coluna `mural_whatsapp_phone` (text, nullable) na tabela `organizations`.
 
 ---
 
-### 2. Hooks — 3 Novos Arquivos
+### 2. Prontuario Multidisciplinar (dentro de Residentes)
 
-Seguindo o padrao exato dos hooks de psicologia (`as any` cast, `useAuth` para `created_by`):
+**Localizacao**: Nova aba "Prontuario" no `ResidentForm.tsx` (ao lado de Dados Pessoais, Familiares, etc.)
 
-| Arquivo | Funcao |
-|---------|--------|
-| `src/hooks/useNutritionAssessments.ts` | Query + Upsert para avaliacao inicial |
-| `src/hooks/useNutritionEvolutions.ts` | Query + Create para evolucoes |
-| `src/hooks/useNutritionAttendances.ts` | Query + Create para atendimentos |
+**Arquivos novos**:
+- `src/components/residentes/ProntuarioTab.tsx` — componente da aba
+- `src/hooks/useMultidisciplinaryRecord.ts` — hook que consulta TODAS as tabelas de atendimento do residente e unifica em timeline
 
----
+**Funcionamento**:
+- O hook faz queries paralelas nas 7 tabelas existentes: `psychology_anamnesis`, `psychology_assessments`, `psychology_evolutions`, `psychology_attendances`, `nutrition_assessments`, `nutrition_evolutions`, `nutrition_attendances`
+- Unifica todos os registros em um array com formato `{ date, competency, type, professional, summary, fullData }`
+- Ordena por data (mais recente primeiro)
+- Filtros: competencia (dropdown), periodo (date range), checkbox "somente mural"
+- Cada item na timeline: card compacto com data, badge da competencia, tipo, resumo truncado e botao "Ver completo" (dialog)
+- Conteudo sigiloso da psicologia (`private_notes`): exibe "Conteudo restrito" para todos; nao ha controle de role nesta fase
+- Botao "Gerar PDF": usa `window.print()` com CSS de impressao ou gera HTML formatado para download. Respeita sigilo (nao inclui `private_notes`)
 
-### 3. Componentes — 3 Novos Arquivos
-
-| Arquivo | Descricao |
-|---------|-----------|
-| `src/components/atendimento/NutritionAssessment.tsx` | Formulario completo com secoes A-G, calculo automatico de IMC/TMB/GET, triagem com pontuacao, composicao corporal opcional |
-| `src/components/atendimento/NutritionEvolutions.tsx` | Lista + formulario, calculo automatico de variacao de peso, alerta visual se perda > 5% |
-| `src/components/atendimento/NutritionAttendances.tsx` | Lista + formulario com campo mural (azul), sem campo sigiloso, assinatura automatica |
-
----
-
-### 4. Alteracao na Pagina Principal
-
-**`src/pages/AtendimentoMultidisciplinar.tsx`**:
-- Habilitar o item "Nutricionista" no array `COMPETENCIAS` (atualmente so Psicologia esta habilitada) adicionando um novo item com icone `Apple` ou similar do lucide-react
-- Adicionar bloco condicional `selectedCompetencia === "nutricao"` com as 3 abas
+**Alteracao em `ResidentForm.tsx`**: Adicionar nova tab "Prontuario" (habilitada somente em modo edicao, como as outras abas)
 
 ---
 
-### 5. Detalhes dos Calculos Automaticos
+### 3. PIA — Plano Individual de Atendimento (dentro de Residentes)
 
-**IMC**: `peso / (altura ^ 2)` — exibido ao lado dos campos peso/altura
+**Localizacao**: Nova aba "PIA" no `ResidentForm.tsx`
 
-**TMB (Harris-Benedict)**:
-- Homem: `66.5 + (13.75 * peso) + (5.003 * altura_cm) - (6.755 * idade)`
-- Mulher: `655.1 + (9.563 * peso) + (1.85 * altura_cm) - (4.676 * idade)`
+**Arquivos novos**:
+- `src/components/residentes/PIATab.tsx` — componente completo
+- `src/hooks/usePIA.ts` — hook para tabelas `pia`, `pia_goals`, `pia_revisions`
 
-**GET**: `TMB * fator_atividade` (sedentario=1.2, leve=1.375, moderado=1.55, intenso=1.725)
-
-**Sugestoes caloricas**: Manutencao = GET, Perda = GET - 500, Ganho = GET + 500
-
-**% Gordura** (Durnin-Womersley simplificado): Se houver ao menos 2 dobras, calcular estimativa. Senao, "Dados insuficientes".
-
-**Triagem Nutricional** (MNA simplificado):
-- Pontuacao baseada em: apetite (derivado de food_acceptance se existir), IMC, mobilidade (derivado do activity_level), perda de peso recente (derivado de weight_variation). Classificacao: >= 12 sem risco, 8-11 risco, < 8 alto risco. Os campos serao preenchidos diretamente na avaliacao para simplicidade.
-
-**Variacao de peso na Evolucao**: `((peso_atual - peso_anterior) / peso_anterior) * 100`. Peso anterior vem da ultima evolucao ou da avaliacao inicial. Alerta visual (badge vermelho) se perda > 5%.
+**Funcionamento**:
+- Ao abrir, busca PIA existente do residente. Se nao existir, botao "Criar PIA"
+- **Auto-abastecimento**: O componente faz query na `psychology_anamnesis` (campo `initial_psychological_synthesis` e `pia_psychological_goals`) e `nutrition_assessments` (campo `nutritional_diagnosis` e `pia_nutritional_goals`) para exibir automaticamente na secao de diagnostico
+- Secoes:
+  - A) Identificacao: status (select), data criacao, ultima revisao
+  - B) Diagnostico Multidisciplinar: dados auto-preenchidos (read-only, vindos das avaliacoes) + campo editavel "Sintese geral da equipe"
+  - C) Metas por competencia: lista de metas com competencia, texto, status (em_andamento/atingida/nao_atingida), prazo revisao, observacoes. Botao "Adicionar meta"
+  - D) Plano de intervencoes por competencia: textareas editaveis (psicologia, nutricao, outros)
+  - E) Revisoes: lista historica + botao "Nova revisao" (data auto, responsavel auto, campo descricao)
+- Botao "Gerar PDF": monta documento completo com todas as secoes
 
 ---
 
-### 6. Resumo de Entregas
+### 4. Mural (Chat Institucional)
+
+**Localizacao**: Icone na top bar (header do `AppLayout.tsx`) com badge de nao-lidas. Abre como sheet/drawer lateral.
+
+**Arquivos novos**:
+- `src/components/mural/MuralSheet.tsx` — drawer/sheet com o chat
+- `src/components/mural/MuralBadge.tsx` — icone + badge de nao-lidas para o header
+- `src/hooks/useMural.ts` — hook para mensagens + leitura
+
+**Funcionamento**:
+- `useMural` busca mensagens da `mural_messages` filtradas por `organization_id` do usuario
+- Exibe em formato chat (mais recente embaixo), com avatar/nome do autor, data/hora, conteudo
+- Campo de input na parte inferior para postar nova mensagem
+- Badge: conta mensagens com `created_at > last_read_at` do usuario. Ao abrir, faz upsert em `mural_reads`
+- **Exportacao**:
+  - Botao "Exportar" no topo do mural
+  - Opcoes: "Por data" (seletor de data, gera texto de todas as mensagens daquele dia) ou clicar em mensagem especifica
+  - Gera texto formatado: `[DD/MM/YYYY HH:mm] Nome: Mensagem`
+  - Botoes "Copiar" e "Enviar no WhatsApp" (abre `https://wa.me/{telefone}?text={texto}` usando telefone configurado)
+- `source_type` e `source_resident_name` permitem identificar mensagens que vieram de campos "mural" das competencias (preparado para integracao futura)
+
+**Alteracao em `AppLayout.tsx`**: Adicionar `MuralBadge` no header ao lado do `SidebarTrigger`
+
+**Alteracao em `Settings.tsx`**: Adicionar campo "Telefone WhatsApp do Mural" na aba Instituicao
+
+**Alteracao em `organizations`**: Adicionar coluna `mural_whatsapp_phone`
+
+---
+
+### 5. Resumo de Entregas
 
 | Item | Tipo |
 |------|------|
-| 3 tabelas no banco | Migration SQL |
-| RLS para todas | Migration SQL |
-| Triggers updated_at | Migration SQL |
-| 3 hooks de dados | Hooks React |
-| 3 componentes de nutricao | Componentes React |
-| Alteracao AtendimentoMultidisciplinar.tsx | Habilitar Nutricionista |
+| 5 tabelas novas (pia, pia_goals, pia_revisions, mural_messages, mural_reads) | Migration SQL |
+| 1 coluna nova em organizations | Migration SQL |
+| RLS para todas as tabelas | Migration SQL |
+| ProntuarioTab.tsx + useMultidisciplinaryRecord.ts | Componentes React |
+| PIATab.tsx + usePIA.ts | Componentes React |
+| MuralSheet.tsx + MuralBadge.tsx + useMural.ts | Componentes React |
+| Alteracao ResidentForm.tsx (2 abas novas) | Edicao |
+| Alteracao AppLayout.tsx (badge mural) | Edicao |
+| Alteracao Settings.tsx (campo whatsapp) | Edicao |
 
-Nenhuma alteracao em sidebar, rotas, ou qualquer outro modulo existente.
+Nenhuma alteracao em sidebar, rotas, triagens, competencias existentes ou qualquer outro modulo.
 
