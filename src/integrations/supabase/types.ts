@@ -470,6 +470,10 @@ export type Database = {
           org_type: Database["public"]["Enums"]["org_type"]
           parent_id: string | null
           state: string | null
+          total_female_beds: number
+          total_female_rooms: number
+          total_male_beds: number
+          total_male_rooms: number
         }
         Insert: {
           central_council_name?: string | null
@@ -483,6 +487,10 @@ export type Database = {
           org_type: Database["public"]["Enums"]["org_type"]
           parent_id?: string | null
           state?: string | null
+          total_female_beds?: number
+          total_female_rooms?: number
+          total_male_beds?: number
+          total_male_rooms?: number
         }
         Update: {
           central_council_name?: string | null
@@ -496,6 +504,10 @@ export type Database = {
           org_type?: Database["public"]["Enums"]["org_type"]
           parent_id?: string | null
           state?: string | null
+          total_female_beds?: number
+          total_female_rooms?: number
+          total_male_beds?: number
+          total_male_rooms?: number
         }
         Relationships: [
           {
@@ -1238,6 +1250,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "residents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          beds: number
+          created_at: string
+          id: string
+          identifier: string
+          observations: string | null
+          organization_id: string
+          type: string
+        }
+        Insert: {
+          beds?: number
+          created_at?: string
+          id?: string
+          identifier: string
+          observations?: string | null
+          organization_id: string
+          type?: string
+        }
+        Update: {
+          beds?: number
+          created_at?: string
+          id?: string
+          identifier?: string
+          observations?: string | null
+          organization_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"

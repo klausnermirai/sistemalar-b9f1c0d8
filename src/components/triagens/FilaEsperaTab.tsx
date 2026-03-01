@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Search, User, Archive, ArrowRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ArchiveModal } from "./ArchiveModal";
 import { toast } from "sonner";
 
 const priorityLabels: Record<string, string> = {
@@ -29,7 +29,6 @@ export function FilaEsperaTab() {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [archiveReason, setArchiveReason] = useState("");
 
   const filtered = candidates.filter((c) =>
     c.elder_name.toLowerCase().includes(search.toLowerCase())
@@ -49,32 +48,15 @@ export function FilaEsperaTab() {
     if (!selectedId) return;
     updateCandidate.mutate(
       { id: selectedId, stage: "decisao_diretoria" as any },
-      {
-        onSuccess: () => {
-          toast.success("Enviado para Parecer da Diretoria");
-          setSelectedId(null);
-        },
-      }
+      { onSuccess: () => { toast.success("Enviado para Parecer da Diretoria"); setSelectedId(null); } }
     );
   };
 
-  const handleArchive = () => {
-    if (!selectedId || !archiveReason.trim()) return;
+  const handleArchive = (reason: string) => {
+    if (!selectedId) return;
     updateCandidate.mutate(
-      {
-        id: selectedId,
-        stage: "arquivado" as any,
-        archive_reason: archiveReason,
-        archived_at: new Date().toISOString(),
-      },
-      {
-        onSuccess: () => {
-          toast.success("Candidato arquivado");
-          setArchiveOpen(false);
-          setArchiveReason("");
-          setSelectedId(null);
-        },
-      }
+      { id: selectedId, stage: "arquivado" as any, archive_reason: reason, archived_at: new Date().toISOString() },
+      { onSuccess: () => { toast.success("Candidato arquivado"); setArchiveOpen(false); setSelectedId(null); } }
     );
   };
 
@@ -82,12 +64,7 @@ export function FilaEsperaTab() {
     <div className="space-y-4">
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar candidato..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
+        <Input placeholder="Buscar candidato..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
       </div>
 
       {isLoading ? (
@@ -97,11 +74,7 @@ export function FilaEsperaTab() {
       ) : (
         <div className="grid gap-3">
           {filtered.map((c) => (
-            <Card
-              key={c.id}
-              className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => setSelectedId(c.id)}
-            >
+            <Card key={c.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedId(c.id)}>
               <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-4">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -109,9 +82,7 @@ export function FilaEsperaTab() {
                   </div>
                   <p className="font-bold text-foreground">{c.elder_name}</p>
                 </div>
-                <Badge className={priorityColors[c.priority]}>
-                  {priorityLabels[c.priority]}
-                </Badge>
+                <Badge className={priorityColors[c.priority]}>{priorityLabels[c.priority]}</Badge>
               </CardContent>
             </Card>
           ))}
@@ -124,7 +95,6 @@ export function FilaEsperaTab() {
             <DialogTitle>{selected?.elder_name}</DialogTitle>
             <DialogDescription>Gerencie o candidato na fila de espera</DialogDescription>
           </DialogHeader>
-
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Prioridade</Label>
@@ -138,7 +108,6 @@ export function FilaEsperaTab() {
               </Select>
             </div>
           </div>
-
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="destructive" onClick={() => setArchiveOpen(true)}>
               <Archive className="h-4 w-4 mr-2" /> Arquivar
@@ -150,25 +119,13 @@ export function FilaEsperaTab() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Arquivar Candidato</DialogTitle>
-            <DialogDescription>Informe o motivo do arquivamento</DialogDescription>
-          </DialogHeader>
-          <Textarea
-            placeholder="Motivo do arquivamento..."
-            value={archiveReason}
-            onChange={(e) => setArchiveReason(e.target.value)}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setArchiveOpen(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleArchive} disabled={!archiveReason.trim() || updateCandidate.isPending}>
-              Confirmar Arquivamento
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ArchiveModal
+        open={archiveOpen}
+        onClose={() => setArchiveOpen(false)}
+        onConfirm={handleArchive}
+        isPending={updateCandidate.isPending}
+        candidateName={selected?.elder_name}
+      />
     </div>
   );
 }

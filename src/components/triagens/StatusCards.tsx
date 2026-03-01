@@ -1,6 +1,7 @@
 import { useCandidateCounts } from "@/hooks/useCandidates";
 import { Card, CardContent } from "@/components/ui/card";
-import { CalendarDays, MessageSquare, Clock, Home, Archive, Briefcase, Stethoscope, Handshake } from "lucide-react";
+import { CalendarDays, MessageSquare, Clock, Archive, Briefcase, Stethoscope, Handshake } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const stages = [
   { key: "agendamento", label: "Agendamentos", icon: CalendarDays },
@@ -9,19 +10,33 @@ const stages = [
   { key: "decisao_diretoria", label: "Diretoria", icon: Briefcase },
   { key: "avaliacao_medica", label: "Parecer Médico", icon: Stethoscope },
   { key: "integracao", label: "Integração", icon: Handshake },
-  { key: "acolhido", label: "Acolhidos", icon: Home },
   { key: "arquivado", label: "Arquivados", icon: Archive },
 ] as const;
 
-export function StatusCards() {
+interface StatusCardsProps {
+  activeStage?: string;
+  onStageClick?: (stage: string) => void;
+}
+
+export function StatusCards({ activeStage, onStageClick }: StatusCardsProps) {
   const { data: counts } = useCandidateCounts();
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
       {stages.map((s) => (
-        <Card key={s.key} className="shadow-sm hover:shadow-md transition-shadow">
+        <Card
+          key={s.key}
+          className={cn(
+            "shadow-sm hover:shadow-md transition-shadow cursor-pointer",
+            activeStage === s.key && "ring-2 ring-primary shadow-md"
+          )}
+          onClick={() => onStageClick?.(s.key)}
+        >
           <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-lg",
+              activeStage === s.key ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
+            )}>
               <s.icon className="h-5 w-5" />
             </div>
             <p className="text-2xl font-extrabold text-foreground">

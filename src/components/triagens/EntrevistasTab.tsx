@@ -4,9 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, User, FileText, ArrowRight } from "lucide-react";
+import { Search, User, FileText, ArrowRight, Archive } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { InterviewForm } from "./InterviewForm";
+import { ArchiveModal } from "./ArchiveModal";
 import { toast } from "@/hooks/use-toast";
 
 const priorityLabels: Record<string, string> = {
@@ -27,6 +28,8 @@ export function EntrevistasTab() {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiveTargetId, setArchiveTargetId] = useState<string | null>(null);
 
   const handleEvolve = async (id: string) => {
     try {
@@ -35,6 +38,24 @@ export function EntrevistasTab() {
       setExpandedId(null);
     } catch {
       toast({ title: "Erro ao evoluir candidato", variant: "destructive" });
+    }
+  };
+
+  const handleArchive = async (reason: string) => {
+    if (!archiveTargetId) return;
+    try {
+      await updateCandidate.mutateAsync({
+        id: archiveTargetId,
+        stage: "arquivado",
+        archive_reason: reason,
+        archived_at: new Date().toISOString(),
+      });
+      setArchiveOpen(false);
+      setArchiveTargetId(null);
+      setExpandedId(null);
+      toast({ title: "Candidato arquivado." });
+    } catch {
+      toast({ title: "Erro ao arquivar", variant: "destructive" });
     }
   };
 
@@ -53,12 +74,7 @@ export function EntrevistasTab() {
     <div className="space-y-4">
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar candidato..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
+        <Input placeholder="Buscar candidato..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
       </div>
 
       {isLoading ? (
@@ -68,11 +84,7 @@ export function EntrevistasTab() {
       ) : (
         <div className="grid gap-3">
           {filtered.map((c) => (
-            <Card
-              key={c.id}
-              className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}
-            >
+            <Card key={c.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}>
               <CardContent className="flex flex-col p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -81,16 +93,10 @@ export function EntrevistasTab() {
                     </div>
                     <div>
                       <p className="font-bold text-foreground">{c.elder_name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Clique para ver as opções
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Clique para ver as opções</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge className={priorityColors[c.priority]}>
-                      {priorityLabels[c.priority]}
-                    </Badge>
-                  </div>
+                  <Badge className={priorityColors[c.priority]}>{priorityLabels[c.priority]}</Badge>
                 </div>
                 {expandedId === c.id && (
                   <div className="flex gap-2 mt-3 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
@@ -100,6 +106,9 @@ export function EntrevistasTab() {
                     <Button size="sm" onClick={() => handleEvolve(c.id)}>
                       <ArrowRight className="h-4 w-4 mr-1" /> Evoluir para Fila de Espera
                     </Button>
+                    <Button variant="destructive" size="sm" onClick={() => { setArchiveTargetId(c.id); setArchiveOpen(true); }}>
+                      <Archive className="h-4 w-4 mr-1" /> Arquivar
+                    </Button>
                   </div>
                 )}
               </CardContent>
@@ -107,6 +116,14 @@ export function EntrevistasTab() {
           ))}
         </div>
       )}
+
+      <ArchiveModal
+        open={archiveOpen}
+        onClose={() => { setArchiveOpen(false); setArchiveTargetId(null); }}
+        onConfirm={handleArchive}
+        isPending={updateCandidate.isPending}
+        candidateName={candidates.find((c) => c.id === archiveTargetId)?.elder_name}
+      />
     </div>
   );
 }
