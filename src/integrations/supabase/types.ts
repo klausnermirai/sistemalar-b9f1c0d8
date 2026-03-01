@@ -153,6 +153,76 @@ export type Database = {
           },
         ]
       }
+      mural_messages: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          content: string
+          created_at: string
+          id: string
+          organization_id: string
+          source_resident_name: string | null
+          source_type: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          source_resident_name?: string | null
+          source_type?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          source_resident_name?: string | null
+          source_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mural_messages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mural_reads: {
+        Row: {
+          id: string
+          last_read_at: string
+          organization_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_read_at?: string
+          organization_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_read_at?: string
+          organization_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mural_reads_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nutrition_assessments: {
         Row: {
           activity_level: string | null
@@ -395,6 +465,7 @@ export type Database = {
           created_at: string
           id: string
           metropolitan_council_name: string | null
+          mural_whatsapp_phone: string | null
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
           parent_id: string | null
@@ -407,6 +478,7 @@ export type Database = {
           created_at?: string
           id?: string
           metropolitan_council_name?: string | null
+          mural_whatsapp_phone?: string | null
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
           parent_id?: string | null
@@ -419,6 +491,7 @@ export type Database = {
           created_at?: string
           id?: string
           metropolitan_council_name?: string | null
+          mural_whatsapp_phone?: string | null
           name?: string
           org_type?: Database["public"]["Enums"]["org_type"]
           parent_id?: string | null
@@ -430,6 +503,129 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pia: {
+        Row: {
+          created_at: string
+          id: string
+          interventions_nutrition: string | null
+          interventions_other: string | null
+          interventions_psychology: string | null
+          resident_id: string
+          status: string
+          team_synthesis: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interventions_nutrition?: string | null
+          interventions_other?: string | null
+          interventions_psychology?: string | null
+          resident_id: string
+          status?: string
+          team_synthesis?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interventions_nutrition?: string | null
+          interventions_other?: string | null
+          interventions_psychology?: string | null
+          resident_id?: string
+          status?: string
+          team_synthesis?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pia_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pia_goals: {
+        Row: {
+          competency: string
+          created_at: string
+          goal_text: string | null
+          id: string
+          observations: string | null
+          pia_id: string
+          review_deadline: string | null
+          status: string
+        }
+        Insert: {
+          competency?: string
+          created_at?: string
+          goal_text?: string | null
+          id?: string
+          observations?: string | null
+          pia_id: string
+          review_deadline?: string | null
+          status?: string
+        }
+        Update: {
+          competency?: string
+          created_at?: string
+          goal_text?: string | null
+          id?: string
+          observations?: string | null
+          pia_id?: string
+          review_deadline?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pia_goals_pia_id_fkey"
+            columns: ["pia_id"]
+            isOneToOne: false
+            referencedRelation: "pia"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pia_revisions: {
+        Row: {
+          changes_description: string | null
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          pia_id: string
+          revised_by: string | null
+        }
+        Insert: {
+          changes_description?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          pia_id: string
+          revised_by?: string | null
+        }
+        Update: {
+          changes_description?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          pia_id?: string
+          revised_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pia_revisions_pia_id_fkey"
+            columns: ["pia_id"]
+            isOneToOne: false
+            referencedRelation: "pia"
             referencedColumns: ["id"]
           },
         ]

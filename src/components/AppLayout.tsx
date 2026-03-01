@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
+import { MuralBadge } from "@/components/mural/MuralBadge";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -23,6 +24,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 flex flex-col">
           <header className="flex h-14 items-center border-b bg-card px-4">
             <SidebarTrigger className="mr-4" />
+            <div className="ml-auto">
+              <MuralBadge />
+            </div>
           </header>
           <div className="flex-1 p-6">{children}</div>
         </main>

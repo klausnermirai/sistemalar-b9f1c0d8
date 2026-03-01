@@ -64,6 +64,7 @@ export default function Settings() {
   const [orgState, setOrgState] = useState("");
   const [orgCentral, setOrgCentral] = useState("");
   const [orgMetro, setOrgMetro] = useState("");
+  const [orgWhatsapp, setOrgWhatsapp] = useState("");
 
   // Invite form
   const [invEmail, setInvEmail] = useState("");
@@ -93,6 +94,7 @@ export default function Settings() {
       setOrgState((data as any).state || "");
       setOrgCentral(data.central_council_name || "");
       setOrgMetro(data.metropolitan_council_name || "");
+      setOrgWhatsapp((data as any).mural_whatsapp_phone || "");
     }
   }
 
@@ -134,7 +136,8 @@ export default function Settings() {
           state: orgState || null,
           central_council_name: orgCentral || null,
           metropolitan_council_name: orgMetro || null,
-        })
+          mural_whatsapp_phone: orgWhatsapp || null,
+        } as any)
         .eq("id", userOrgId!);
 
       if (error) throw error;
@@ -257,6 +260,11 @@ export default function Settings() {
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase tracking-wider">Conselho Metropolitano</Label>
                   <Input value={orgMetro} onChange={(e) => setOrgMetro(e.target.value)} className="h-11 rounded-xl" disabled={!isAdmin} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider">Telefone WhatsApp do Mural</Label>
+                  <Input value={orgWhatsapp} onChange={(e) => setOrgWhatsapp(e.target.value)} className="h-11 rounded-xl" disabled={!isAdmin} placeholder="Ex: 5511999999999" />
                 </div>
 
                 {isAdmin && (

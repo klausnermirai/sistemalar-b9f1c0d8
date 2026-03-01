@@ -7,6 +7,8 @@ import { DadosPessoaisTab } from "./DadosPessoaisTab";
 import { FamiliaresVisitantesTab } from "./FamiliaresVisitantesTab";
 import { FinanceiroTab } from "./FinanceiroTab";
 import { ItensPessoaisTab } from "./ItensPessoaisTab";
+import { ProntuarioTab } from "./ProntuarioTab";
+import { PIATab } from "./PIATab";
 import { toast } from "sonner";
 
 interface Props {
@@ -69,6 +71,12 @@ export function ResidentForm({ resident, onBack }: Props) {
           <TabsTrigger value="itens" className="font-semibold uppercase text-xs tracking-wider" disabled={!isEditing}>
             Itens Pessoais
           </TabsTrigger>
+          <TabsTrigger value="prontuario" className="font-semibold uppercase text-xs tracking-wider" disabled={!isEditing}>
+            Prontuário
+          </TabsTrigger>
+          <TabsTrigger value="pia" className="font-semibold uppercase text-xs tracking-wider" disabled={!isEditing}>
+            PIA
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dados_pessoais">
@@ -89,6 +97,16 @@ export function ResidentForm({ resident, onBack }: Props) {
         <TabsContent value="itens">
           <div className="rounded-lg border bg-card p-6">
             <ItensPessoaisTab residentId={resident?.id || null} />
+          </div>
+        </TabsContent>
+        <TabsContent value="prontuario">
+          <div className="rounded-lg border bg-card p-6">
+            <ProntuarioTab residentId={resident?.id || null} residentName={data.name} />
+          </div>
+        </TabsContent>
+        <TabsContent value="pia">
+          <div className="rounded-lg border bg-card p-6">
+            <PIATab residentId={resident?.id || null} residentName={data.name} />
           </div>
         </TabsContent>
       </Tabs>
