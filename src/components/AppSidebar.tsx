@@ -14,6 +14,7 @@ import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useProfile } from "@/hooks/useProfile";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import {
   ClipboardList,
@@ -27,20 +28,30 @@ import {
   Brain,
 } from "lucide-react";
 
-const menuItems = [
+type Module = "triagens" | "residentes" | "atendimento" | "configuracoes";
+
+const menuItems: { title: string; url: string; icon: any; enabled: boolean; module?: Module }[] = [
   { title: "Dashboard", url: "/", icon: Home, enabled: false },
-  { title: "Triagens", url: "/triagens", icon: ClipboardList, enabled: true },
-  { title: "Residentes", url: "/residentes", icon: BedDouble, enabled: true },
-  { title: "Atendimento", url: "/atendimento", icon: Brain, enabled: true },
+  { title: "Triagens", url: "/triagens", icon: ClipboardList, enabled: true, module: "triagens" },
+  { title: "Residentes", url: "/residentes", icon: BedDouble, enabled: true, module: "residentes" },
+  { title: "Atendimento", url: "/atendimento", icon: Brain, enabled: true, module: "atendimento" },
   { title: "Relatórios", url: "/relatorios", icon: FileText, enabled: false },
   { title: "Equipe", url: "/equipe", icon: Users, enabled: false },
-  { title: "Configurações", url: "/configuracoes", icon: Settings, enabled: true },
+  { title: "Configurações", url: "/configuracoes", icon: Settings, enabled: true, module: "configuracoes" },
 ];
 
 export function AppSidebar() {
   const { signOut } = useAuth();
   const { org } = useOrganization();
   const { profile } = useProfile();
+  const { canAccess, loading: roleLoading } = useUserRole();
+
+  const visibleItems = menuItems.filter((item) => {
+    if (!item.enabled) return false;
+    if (!item.module) return true;
+    if (roleLoading) return true; // show all while loading
+    return canAccess(item.module as any);
+  });
 
   return (
     <Sidebar className="border-r-0">
@@ -72,13 +83,9 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    disabled={!item.enabled}
-                    className={!item.enabled ? "opacity-40 pointer-events-none" : ""}
-                  >
+                  <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
                       className="flex items-center gap-3 px-6 py-2.5 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors rounded-md"

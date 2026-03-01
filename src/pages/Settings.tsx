@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { UserPlus, Trash2, Building2, Users } from "lucide-react";
+import { UserPlus, Trash2, Building2, Users, KeyRound, User } from "lucide-react";
 
 const orgTypeLabels: Record<string, string> = {
   obra_unida: "Obra Unida (ILPI)",
@@ -22,8 +23,10 @@ const orgTypeLabels: Record<string, string> = {
 
 const roleLabels: Record<string, string> = {
   admin: "Administrador",
-  coordinator: "Coordenador",
   social_worker: "Assistente Social",
+  psicologo: "Psicologia",
+  nutricionista: "Nutricionista",
+  coordinator: "Coordenador",
   viewer: "Visualizador",
 };
 
@@ -44,11 +47,11 @@ interface OrgMember {
   is_primary: boolean;
   full_name: string | null;
   role_title: string | null;
-  email?: string;
 }
 
 export default function Settings() {
   const { user, userOrgId } = useAuth();
+  const { isAdmin, role, canAccess } = useUserRole();
   const { toast } = useToast();
 
   const [org, setOrg] = useState<OrgData | null>(null);
@@ -69,16 +72,31 @@ export default function Settings() {
   // Invite form
   const [invEmail, setInvEmail] = useState("");
   const [invName, setInvName] = useState("");
-  const [invRole, setInvRole] = useState("viewer");
+  const [invRole, setInvRole] = useState("social_worker");
   const [invRoleTitle, setInvRoleTitle] = useState("");
   const [invPassword, setInvPassword] = useState("");
+
+  // My account - change password
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  // Admin reset password dialog
+  const [resetTarget, setResetTarget] = useState<OrgMember | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
+
+  // Admin edit role dialog
+  const [editRoleTarget, setEditRoleTarget] = useState<OrgMember | null>(null);
+  const [editRoleValue, setEditRoleValue] = useState("");
+  const [editingRole, setEditingRole] = useState(false);
 
   useEffect(() => {
     if (userOrgId) {
       loadOrg();
-      loadMembers();
+      if (isAdmin) loadMembers();
     }
-  }, [userOrgId]);
+  }, [userOrgId, isAdmin]);
 
   async function loadOrg() {
     const { data } = await supabase
@@ -103,7 +121,6 @@ export default function Settings() {
       .from("user_roles")
       .select("user_id, role, is_primary")
       .eq("organization_id", userOrgId!);
-
     if (!roles) return;
 
     const userIds = roles.map((r) => r.user_id);
@@ -114,11 +131,7 @@ export default function Settings() {
 
     const merged: OrgMember[] = roles.map((r) => {
       const prof = profiles?.find((p) => p.user_id === r.user_id);
-      return {
-        ...r,
-        full_name: prof?.full_name || null,
-        role_title: prof?.role_title || null,
-      };
+      return { ...r, full_name: prof?.full_name || null, role_title: prof?.role_title || null };
     });
     setMembers(merged);
   }
@@ -139,7 +152,6 @@ export default function Settings() {
           mural_whatsapp_phone: orgWhatsapp || null,
         } as any)
         .eq("id", userOrgId!);
-
       if (error) throw error;
       toast({ title: "Dados salvos com sucesso!" });
       loadOrg();
@@ -155,24 +167,13 @@ export default function Settings() {
     setInviting(true);
     try {
       const { data, error } = await supabase.functions.invoke("invite-user", {
-        body: {
-          email: invEmail,
-          password: invPassword,
-          full_name: invName,
-          role: invRole,
-          role_title: invRoleTitle,
-        },
+        body: { email: invEmail, password: invPassword, full_name: invName, role: invRole, role_title: invRoleTitle },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
       toast({ title: "Usuário convidado com sucesso!" });
       setInviteOpen(false);
-      setInvEmail("");
-      setInvName("");
-      setInvRole("viewer");
-      setInvRoleTitle("");
-      setInvPassword("");
+      setInvEmail(""); setInvName(""); setInvRole("social_worker"); setInvRoleTitle(""); setInvPassword("");
       loadMembers();
     } catch (err: any) {
       toast({ title: "Erro ao convidar", description: err.message, variant: "destructive" });
@@ -187,11 +188,7 @@ export default function Settings() {
       return;
     }
     try {
-      const { error } = await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", userId)
-        .eq("organization_id", userOrgId!);
+      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("organization_id", userOrgId!);
       if (error) throw error;
       toast({ title: "Usuário removido da organização" });
       loadMembers();
@@ -200,7 +197,70 @@ export default function Settings() {
     }
   }
 
-  const isAdmin = members.some((m) => m.user_id === user?.id && m.role === "admin");
+  async function handleChangeOwnPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      toast({ title: "As senhas não coincidem", variant: "destructive" });
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast({ title: "Senha deve ter pelo menos 6 caracteres", variant: "destructive" });
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast({ title: "Senha alterada com sucesso!" });
+      setNewPassword(""); setConfirmPassword("");
+    } catch (err: any) {
+      toast({ title: "Erro ao alterar senha", description: err.message, variant: "destructive" });
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resetTarget) return;
+    setResetting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-user-password", {
+        body: { user_id: resetTarget.user_id, new_password: resetPassword },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Senha redefinida com sucesso!" });
+      setResetTarget(null); setResetPassword("");
+    } catch (err: any) {
+      toast({ title: "Erro ao redefinir senha", description: err.message, variant: "destructive" });
+    } finally {
+      setResetting(false);
+    }
+  }
+
+  async function handleEditRole(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editRoleTarget) return;
+    setEditingRole(true);
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ role: editRoleValue as any })
+        .eq("user_id", editRoleTarget.user_id)
+        .eq("organization_id", userOrgId!);
+      if (error) throw error;
+      toast({ title: "Papel atualizado!" });
+      setEditRoleTarget(null);
+      loadMembers();
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setEditingRole(false);
+    }
+  }
+
+  const roleLabelForUser = roleLabels[role || ""] || role || "—";
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -208,82 +268,113 @@ export default function Settings() {
         Configurações
       </h1>
 
-      <Tabs defaultValue="instituicao">
+      <Tabs defaultValue="minha_conta">
         <TabsList className="mb-6">
-          <TabsTrigger value="instituicao" className="gap-2">
-            <Building2 className="h-4 w-4" /> Instituição
+          <TabsTrigger value="minha_conta" className="gap-2">
+            <User className="h-4 w-4" /> Minha Conta
           </TabsTrigger>
-          <TabsTrigger value="acesso" className="gap-2">
-            <Users className="h-4 w-4" /> Controle de Acesso
-          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="instituicao" className="gap-2">
+              <Building2 className="h-4 w-4" /> Instituição
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="acesso" className="gap-2">
+              <Users className="h-4 w-4" /> Controle de Acesso
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        <TabsContent value="instituicao">
+        {/* Minha Conta - accessible to ALL roles */}
+        <TabsContent value="minha_conta">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-bold uppercase tracking-wide">
-                Dados da Instituição
-              </CardTitle>
+              <CardTitle className="text-lg font-bold uppercase tracking-wide">Minha Conta</CardTitle>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSaveOrg} className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-wider">Tipo</Label>
-                  <Input value={org ? orgTypeLabels[org.org_type] || org.org_type : ""} disabled className="h-11 rounded-xl bg-muted" />
-                </div>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider">Nome</Label>
+                <Input value={user?.user_metadata?.full_name || "—"} disabled className="h-11 rounded-xl bg-muted" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider">Papel no Sistema</Label>
+                <Input value={roleLabelForUser} disabled className="h-11 rounded-xl bg-muted" />
+              </div>
 
+              <form onSubmit={handleChangeOwnPassword} className="space-y-4 border-t pt-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider">Alterar Senha</h3>
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-wider">Nome</Label>
-                  <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} className="h-11 rounded-xl" disabled={!isAdmin} />
+                  <Label className="text-xs font-bold uppercase tracking-wider">Nova Senha</Label>
+                  <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} className="h-11 rounded-xl" />
                 </div>
-
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-wider">CNPJ</Label>
-                  <Input value={orgCnpj} onChange={(e) => setOrgCnpj(e.target.value)} className="h-11 rounded-xl" disabled={!isAdmin} />
+                  <Label className="text-xs font-bold uppercase tracking-wider">Confirmar Senha</Label>
+                  <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6} className="h-11 rounded-xl" />
                 </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-wider">Estado (UF)</Label>
-                  <Input value={orgState} onChange={(e) => setOrgState(e.target.value)} className="h-11 rounded-xl" disabled={!isAdmin} maxLength={2} placeholder="Ex: SP" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-wider">Cidade</Label>
-                  <Input value={orgCity} onChange={(e) => setOrgCity(e.target.value)} className="h-11 rounded-xl" disabled={!isAdmin} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-wider">Conselho Central</Label>
-                  <Input value={orgCentral} onChange={(e) => setOrgCentral(e.target.value)} className="h-11 rounded-xl" disabled={!isAdmin} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-wider">Conselho Metropolitano</Label>
-                  <Input value={orgMetro} onChange={(e) => setOrgMetro(e.target.value)} className="h-11 rounded-xl" disabled={!isAdmin} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-wider">Telefone WhatsApp do Mural</Label>
-                  <Input value={orgWhatsapp} onChange={(e) => setOrgWhatsapp(e.target.value)} className="h-11 rounded-xl" disabled={!isAdmin} placeholder="Ex: 5511999999999" />
-                </div>
-
-                {isAdmin && (
-                  <Button type="submit" className="h-11 rounded-xl font-bold uppercase tracking-wider" disabled={saving}>
-                    {saving ? "Salvando..." : "Salvar Alterações"}
-                  </Button>
-                )}
+                <Button type="submit" disabled={changingPassword} className="h-11 rounded-xl font-bold uppercase tracking-wider">
+                  {changingPassword ? "Alterando..." : "Alterar Senha"}
+                </Button>
               </form>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="acesso">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg font-bold uppercase tracking-wide">
-                Usuários da Instituição
-              </CardTitle>
-              {isAdmin && (
+        {/* Instituição - admin only */}
+        {isAdmin && (
+          <TabsContent value="instituicao">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-bold uppercase tracking-wide">Dados da Instituição</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSaveOrg} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Tipo</Label>
+                    <Input value={org ? orgTypeLabels[org.org_type] || org.org_type : ""} disabled className="h-11 rounded-xl bg-muted" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Nome</Label>
+                    <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} className="h-11 rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">CNPJ</Label>
+                    <Input value={orgCnpj} onChange={(e) => setOrgCnpj(e.target.value)} className="h-11 rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Estado (UF)</Label>
+                    <Input value={orgState} onChange={(e) => setOrgState(e.target.value)} className="h-11 rounded-xl" maxLength={2} placeholder="Ex: SP" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Cidade</Label>
+                    <Input value={orgCity} onChange={(e) => setOrgCity(e.target.value)} className="h-11 rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Conselho Central</Label>
+                    <Input value={orgCentral} onChange={(e) => setOrgCentral(e.target.value)} className="h-11 rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Conselho Metropolitano</Label>
+                    <Input value={orgMetro} onChange={(e) => setOrgMetro(e.target.value)} className="h-11 rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Telefone WhatsApp do Mural</Label>
+                    <Input value={orgWhatsapp} onChange={(e) => setOrgWhatsapp(e.target.value)} className="h-11 rounded-xl" placeholder="Ex: 5511999999999" />
+                  </div>
+                  <Button type="submit" className="h-11 rounded-xl font-bold uppercase tracking-wider" disabled={saving}>
+                    {saving ? "Salvando..." : "Salvar Alterações"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* Controle de Acesso - admin only */}
+        {isAdmin && (
+          <TabsContent value="acesso">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-lg font-bold uppercase tracking-wide">Usuários da Instituição</CardTitle>
                 <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" className="gap-2 rounded-xl font-bold uppercase text-xs tracking-wider">
@@ -319,9 +410,9 @@ export default function Settings() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="admin">Administrador</SelectItem>
-                            <SelectItem value="coordinator">Coordenador</SelectItem>
                             <SelectItem value="social_worker">Assistente Social</SelectItem>
-                            <SelectItem value="viewer">Visualizador</SelectItem>
+                            <SelectItem value="psicologo">Psicologia</SelectItem>
+                            <SelectItem value="nutricionista">Nutricionista</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -331,49 +422,98 @@ export default function Settings() {
                     </form>
                   </DialogContent>
                 </Dialog>
-              )}
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Nome</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Cargo</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Papel</TableHead>
-                    {isAdmin && <TableHead className="w-12" />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {members.map((m) => (
-                    <TableRow key={m.user_id}>
-                      <TableCell className="font-medium">{m.full_name || "—"}</TableCell>
-                      <TableCell>{m.role_title || "—"}</TableCell>
-                      <TableCell>
-                        <Badge variant={m.role === "admin" ? "default" : "secondary"}>
-                          {roleLabels[m.role] || m.role}
-                        </Badge>
-                      </TableCell>
-                      {isAdmin && (
-                        <TableCell>
-                          {m.user_id !== user?.id && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteUser(m.user_id)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </TableCell>
-                      )}
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider">Nome</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider">Cargo</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider">Papel</TableHead>
+                      <TableHead className="w-32 text-xs font-bold uppercase tracking-wider">Ações</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  </TableHeader>
+                  <TableBody>
+                    {members.map((m) => (
+                      <TableRow key={m.user_id}>
+                        <TableCell className="font-medium">{m.full_name || "—"}</TableCell>
+                        <TableCell>{m.role_title || "—"}</TableCell>
+                        <TableCell>
+                          <Badge variant={m.role === "admin" ? "default" : "secondary"}>
+                            {roleLabels[m.role] || m.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {m.user_id !== user?.id && (
+                              <>
+                                <Button variant="ghost" size="icon" title="Editar papel" onClick={() => { setEditRoleTarget(m); setEditRoleValue(m.role); }}>
+                                  <Users className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" title="Redefinir senha" onClick={() => { setResetTarget(m); setResetPassword(""); }}>
+                                  <KeyRound className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(m.user_id)} className="text-destructive hover:text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Reset Password Dialog */}
+            <Dialog open={!!resetTarget} onOpenChange={(open) => !open && setResetTarget(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Redefinir Senha — {resetTarget?.full_name}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleResetPassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Nova Senha</Label>
+                    <Input type="password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} required minLength={6} className="rounded-xl" />
+                  </div>
+                  <Button type="submit" className="w-full rounded-xl font-bold uppercase tracking-wider" disabled={resetting}>
+                    {resetting ? "Redefinindo..." : "Redefinir Senha"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Role Dialog */}
+            <Dialog open={!!editRoleTarget} onOpenChange={(open) => !open && setEditRoleTarget(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Editar Papel — {editRoleTarget?.full_name}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleEditRole} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Papel</Label>
+                    <Select value={editRoleValue} onValueChange={setEditRoleValue}>
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="social_worker">Assistente Social</SelectItem>
+                        <SelectItem value="psicologo">Psicologia</SelectItem>
+                        <SelectItem value="nutricionista">Nutricionista</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button type="submit" className="w-full rounded-xl font-bold uppercase tracking-wider" disabled={editingRole}>
+                    {editingRole ? "Salvando..." : "Salvar"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
