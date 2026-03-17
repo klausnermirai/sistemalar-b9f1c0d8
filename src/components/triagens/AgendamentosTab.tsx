@@ -68,7 +68,7 @@ export function AgendamentosTab() {
         visit_address: newForm.visit_address || null,
         referral_source: newForm.referral_source || null,
         case_description: newForm.case_description || null,
-      });
+      } as any);
       setShowNewModal(false);
       setNewForm({ elder_name: "", phone: "", contact_date: "", visit_address: "", referral_source: "", case_description: "" });
       toast({ title: "Agendamento criado com sucesso!" });
