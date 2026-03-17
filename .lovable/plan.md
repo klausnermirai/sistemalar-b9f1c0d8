@@ -1,31 +1,27 @@
 
 
-## Correcao: Contagem de Acolhidos mostrando zero
+## Adicionar campos "Origem da Indicacao" e "Descricao do Caso" no Agendamento
 
-### Problema
+### 1. Migration: adicionar 2 colunas na tabela `candidates`
 
-Os residentes foram importados com o campo `gender` em formato capitalizado: `"Masculino"` e `"Feminino"`. Porem, o hook `useOccupancy.ts` compara com valores em minusculo (`"masculino"` e `"feminino"`), resultando em contagem zero.
-
-### Solucao
-
-Alterar a comparacao no `useOccupancy.ts` para ser case-insensitive, usando `.toLowerCase()` antes de comparar.
-
-### Arquivo alterado
-
-**`src/hooks/useOccupancy.ts`** - linhas 23-25
-
-Antes:
-```typescript
-if (r.gender === "masculino") maleResidents++;
-else if (r.gender === "feminino") femaleResidents++;
+```sql
+ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS referral_source text;
+ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS case_description text;
 ```
 
-Depois:
-```typescript
-const g = r.gender?.toLowerCase();
-if (g === "masculino") maleResidents++;
-else if (g === "feminino") femaleResidents++;
-```
+### 2. Alterar `AgendamentosTab.tsx`
 
-Isso e tudo. Apenas uma linha de normalizacao resolve o problema sem necessidade de alterar dados no banco.
+- Adicionar ao `newForm`: `referral_source: ""` e `case_description: ""`
+- No formulario do modal "Novo Agendamento":
+  - Campo Select "Origem da Indicacao" com opcoes: CREAS/Prefeitura, Judicial, Conferencias, Contato direto no Lar
+  - Campo Textarea "Breve Descricao do Caso" (opcional)
+- No `handleCreate`: enviar `referral_source` e `case_description`
+- No card da listagem: exibir a origem como badge/tag quando preenchida
+
+### Arquivos alterados
+
+| Arquivo | Acao |
+|---------|------|
+| Migration SQL | 2 colunas novas em `candidates` |
+| `AgendamentosTab.tsx` | Adicionar campos no formulario e exibicao |
 
