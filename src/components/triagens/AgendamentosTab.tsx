@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Phone, MapPin, Calendar, User } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
@@ -25,6 +27,13 @@ const priorityColors: Record<string, string> = {
   dependencia_duvidosa: "bg-warning text-warning-foreground",
 };
 
+const referralSourceLabels: Record<string, string> = {
+  creas_prefeitura: "CREAS / Prefeitura",
+  judicial: "Judicial",
+  conferencias: "Conferências",
+  contato_direto: "Contato direto no Lar",
+};
+
 export function AgendamentosTab() {
   const { data: candidates = [], isLoading } = useCandidates("agendamento");
   const createCandidate = useCreateCandidate();
@@ -41,6 +50,8 @@ export function AgendamentosTab() {
     phone: "",
     contact_date: "",
     visit_address: "",
+    referral_source: "",
+    case_description: "",
   });
 
   const filtered = candidates.filter((c) =>
@@ -55,9 +66,11 @@ export function AgendamentosTab() {
         phone: newForm.phone || null,
         contact_date: newForm.contact_date || null,
         visit_address: newForm.visit_address || null,
+        referral_source: newForm.referral_source || null,
+        case_description: newForm.case_description || null,
       });
       setShowNewModal(false);
-      setNewForm({ elder_name: "", phone: "", contact_date: "", visit_address: "" });
+      setNewForm({ elder_name: "", phone: "", contact_date: "", visit_address: "", referral_source: "", case_description: "" });
       toast({ title: "Agendamento criado com sucesso!" });
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -126,7 +139,12 @@ export function AgendamentosTab() {
                     </div>
                   </div>
                 </div>
-                <Badge className={priorityColors[c.priority]}>{priorityLabels[c.priority]}</Badge>
+                <div className="flex items-center gap-2">
+                  {(c as any).referral_source && referralSourceLabels[(c as any).referral_source] && (
+                    <Badge variant="outline" className="text-xs">{referralSourceLabels[(c as any).referral_source]}</Badge>
+                  )}
+                  <Badge className={priorityColors[c.priority]}>{priorityLabels[c.priority]}</Badge>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -156,6 +174,29 @@ export function AgendamentosTab() {
             <div className="space-y-2">
               <Label className="uppercase text-xs font-bold tracking-wider">Endereço da Visita</Label>
               <Input value={newForm.visit_address} onChange={(e) => setNewForm({ ...newForm, visit_address: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label className="uppercase text-xs font-bold tracking-wider">Origem da Indicação</Label>
+              <Select value={newForm.referral_source} onValueChange={(val) => setNewForm({ ...newForm, referral_source: val })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a origem..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="creas_prefeitura">CREAS / Prefeitura</SelectItem>
+                  <SelectItem value="judicial">Judicial</SelectItem>
+                  <SelectItem value="conferencias">Conferências</SelectItem>
+                  <SelectItem value="contato_direto">Contato direto no Lar</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="uppercase text-xs font-bold tracking-wider">Breve Descrição do Caso</Label>
+              <Textarea
+                value={newForm.case_description}
+                onChange={(e) => setNewForm({ ...newForm, case_description: e.target.value })}
+                placeholder="Descreva brevemente a situação do idoso..."
+                rows={3}
+              />
             </div>
             <DialogFooter>
               <Button type="submit" className="font-bold uppercase" disabled={createCandidate.isPending}>
