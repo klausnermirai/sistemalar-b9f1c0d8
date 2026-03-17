@@ -20,6 +20,7 @@ export type Database = {
           archive_reason: string | null
           archived_at: string | null
           board_opinion: string | null
+          case_description: string | null
           contact_date: string | null
           contract_status: string | null
           created_at: string
@@ -33,6 +34,7 @@ export type Database = {
           organization_id: string
           phone: string | null
           priority: Database["public"]["Enums"]["candidate_priority"]
+          referral_source: string | null
           stage: Database["public"]["Enums"]["candidate_stage"]
           updated_at: string
           visit_address: string | null
@@ -42,6 +44,7 @@ export type Database = {
           archive_reason?: string | null
           archived_at?: string | null
           board_opinion?: string | null
+          case_description?: string | null
           contact_date?: string | null
           contract_status?: string | null
           created_at?: string
@@ -55,6 +58,7 @@ export type Database = {
           organization_id: string
           phone?: string | null
           priority?: Database["public"]["Enums"]["candidate_priority"]
+          referral_source?: string | null
           stage?: Database["public"]["Enums"]["candidate_stage"]
           updated_at?: string
           visit_address?: string | null
@@ -64,6 +68,7 @@ export type Database = {
           archive_reason?: string | null
           archived_at?: string | null
           board_opinion?: string | null
+          case_description?: string | null
           contact_date?: string | null
           contract_status?: string | null
           created_at?: string
@@ -77,6 +82,7 @@ export type Database = {
           organization_id?: string
           phone?: string | null
           priority?: Database["public"]["Enums"]["candidate_priority"]
+          referral_source?: string | null
           stage?: Database["public"]["Enums"]["candidate_stage"]
           updated_at?: string
           visit_address?: string | null
