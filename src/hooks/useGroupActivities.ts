@@ -29,15 +29,15 @@ export interface GroupActivityParticipant {
 }
 
 export function useGroupActivities() {
-  const { organization } = useOrganization();
+  const { org } = useOrganization();
   return useQuery({
-    queryKey: ["group_activities", organization?.id],
+    queryKey: ["group_activities", org?.id],
     queryFn: async () => {
-      if (!organization?.id) return [];
+      if (!org?.id) return [];
       const { data, error } = await supabase
         .from("group_activities" as any)
         .select("*")
-        .eq("organization_id", organization.id)
+        .eq("organization_id", org.id)
         .order("date", { ascending: false });
       if (error) throw error;
       return (data || []) as unknown as GroupActivity[];
