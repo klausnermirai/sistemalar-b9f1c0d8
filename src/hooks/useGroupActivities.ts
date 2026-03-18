@@ -65,7 +65,7 @@ export function useGroupActivityParticipants(activityId: string | undefined) {
 export function useCreateGroupActivity() {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const { organization } = useOrganization();
+  const { org } = useOrganization();
 
   return useMutation({
     mutationFn: async (data: {
