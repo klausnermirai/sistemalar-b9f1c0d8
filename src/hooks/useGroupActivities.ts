@@ -42,7 +42,7 @@ export function useGroupActivities() {
       if (error) throw error;
       return (data || []) as unknown as GroupActivity[];
     },
-    enabled: !!organization?.id,
+    enabled: !!org?.id,
   });
 }
 
