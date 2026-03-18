@@ -3,7 +3,7 @@ import { useResidents } from "@/hooks/useResidents";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Brain, Stethoscope, HeartPulse, Activity, Users, Apple } from "lucide-react";
+import { Brain, Stethoscope, HeartPulse, Activity, Users, Apple, Puzzle, UsersRound } from "lucide-react";
 import { PsychologyAnamnese } from "@/components/atendimento/PsychologyAnamnese";
 import { PsychologyAssessment } from "@/components/atendimento/PsychologyAssessment";
 import { PsychologyEvolutions } from "@/components/atendimento/PsychologyEvolutions";
@@ -11,11 +11,17 @@ import { PsychologyAttendances } from "@/components/atendimento/PsychologyAttend
 import { NutritionAssessment } from "@/components/atendimento/NutritionAssessment";
 import { NutritionEvolutions } from "@/components/atendimento/NutritionEvolutions";
 import { NutritionAttendances } from "@/components/atendimento/NutritionAttendances";
+import { OTAssessment } from "@/components/atendimento/OTAssessment";
+import { OTEvolutions } from "@/components/atendimento/OTEvolutions";
+import { OTAttendances } from "@/components/atendimento/OTAttendances";
+import { GroupActivities } from "@/components/atendimento/GroupActivities";
 import { useUserRole } from "@/hooks/useUserRole";
 
 const ALL_COMPETENCIAS = [
   { key: "psicologia", label: "Psicologia", icon: Brain, enabled: true, module: "atend:psicologia" as const },
   { key: "nutricao", label: "Nutricionista", icon: Apple, enabled: true, module: "atend:nutricao" as const },
+  { key: "terapia_ocupacional", label: "Terapia Ocupacional", icon: Puzzle, enabled: true, module: "atend:terapia_ocupacional" as const },
+  { key: "atividades_grupo", label: "Atividades em Grupo", icon: UsersRound, enabled: true, module: "atend:atividades_grupo" as const },
   { key: "servico_social", label: "Serviço Social", icon: Users, enabled: false, module: null },
   { key: "enfermagem", label: "Enfermagem", icon: HeartPulse, enabled: false, module: null },
   { key: "medicina", label: "Medicina", icon: Stethoscope, enabled: false, module: null },
@@ -33,7 +39,6 @@ export default function AtendimentoMultidisciplinar() {
     return canAccess(c.module);
   });
 
-  // Also show disabled ones for UI completeness
   const disabledCompetencias = ALL_COMPETENCIAS.filter((c) => !c.enabled);
   const visibleCompetencias = [...competencias, ...disabledCompetencias];
 
@@ -42,6 +47,8 @@ export default function AtendimentoMultidisciplinar() {
   );
 
   const activeResidents = residents.filter((r) => r.status === "ativo");
+
+  const needsResidentSelector = selectedCompetencia !== "atividades_grupo";
 
   return (
     <div className="space-y-6">
@@ -54,22 +61,24 @@ export default function AtendimentoMultidisciplinar() {
         </p>
       </div>
 
-      <div className="max-w-md">
-        <Select value={selectedResidentId} onValueChange={setSelectedResidentId}>
-          <SelectTrigger>
-            <SelectValue placeholder={isLoading ? "Carregando..." : "Selecione um residente"} />
-          </SelectTrigger>
-          <SelectContent>
-            {activeResidents.map((r) => (
-              <SelectItem key={r.id} value={r.id}>
-                {r.name} {r.nickname ? `(${r.nickname})` : ""}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {needsResidentSelector && (
+        <div className="max-w-md">
+          <Select value={selectedResidentId} onValueChange={setSelectedResidentId}>
+            <SelectTrigger>
+              <SelectValue placeholder={isLoading ? "Carregando..." : "Selecione um residente"} />
+            </SelectTrigger>
+            <SelectContent>
+              {activeResidents.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.name} {r.nickname ? `(${r.nickname})` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
-      {!selectedResidentId ? (
+      {needsResidentSelector && !selectedResidentId ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             Selecione um residente para acessar o prontuário multidisciplinar.
@@ -101,7 +110,7 @@ export default function AtendimentoMultidisciplinar() {
           </div>
 
           <div className="flex-1 min-w-0">
-            {selectedCompetencia === "psicologia" && canAccess("atend:psicologia") && (
+            {selectedCompetencia === "psicologia" && canAccess("atend:psicologia") && selectedResidentId && (
               <Tabs defaultValue="anamnese">
                 <TabsList className="mb-4">
                   <TabsTrigger value="anamnese">Anamnese</TabsTrigger>
@@ -123,7 +132,7 @@ export default function AtendimentoMultidisciplinar() {
                 </TabsContent>
               </Tabs>
             )}
-            {selectedCompetencia === "nutricao" && canAccess("atend:nutricao") && (
+            {selectedCompetencia === "nutricao" && canAccess("atend:nutricao") && selectedResidentId && (
               <Tabs defaultValue="avaliacao">
                 <TabsList className="mb-4">
                   <TabsTrigger value="avaliacao">1ª Avaliação Nutricional</TabsTrigger>
@@ -140,6 +149,27 @@ export default function AtendimentoMultidisciplinar() {
                   <NutritionAttendances residentId={selectedResidentId} />
                 </TabsContent>
               </Tabs>
+            )}
+            {selectedCompetencia === "terapia_ocupacional" && canAccess("atend:terapia_ocupacional") && selectedResidentId && (
+              <Tabs defaultValue="avaliacao">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="avaliacao">1ª Avaliação de TO</TabsTrigger>
+                  <TabsTrigger value="evolucoes">Evoluções</TabsTrigger>
+                  <TabsTrigger value="atendimentos">Atendimentos</TabsTrigger>
+                </TabsList>
+                <TabsContent value="avaliacao">
+                  <OTAssessment residentId={selectedResidentId} />
+                </TabsContent>
+                <TabsContent value="evolucoes">
+                  <OTEvolutions residentId={selectedResidentId} />
+                </TabsContent>
+                <TabsContent value="atendimentos">
+                  <OTAttendances residentId={selectedResidentId} />
+                </TabsContent>
+              </Tabs>
+            )}
+            {selectedCompetencia === "atividades_grupo" && canAccess("atend:atividades_grupo") && (
+              <GroupActivities />
             )}
           </div>
         </div>

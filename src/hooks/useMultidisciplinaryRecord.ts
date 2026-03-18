@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface TimelineEntry {
   id: string;
   date: string;
-  competency: "psicologia" | "nutricao";
+  competency: "psicologia" | "nutricao" | "terapia_ocupacional";
   type: string;
   professional: string | null;
   summary: string;
