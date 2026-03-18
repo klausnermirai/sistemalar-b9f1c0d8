@@ -97,6 +97,104 @@ export type Database = {
           },
         ]
       }
+      group_activities: {
+        Row: {
+          activity_description: string | null
+          activity_title: string | null
+          competency: string | null
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          mural_notes: string | null
+          objectives: string | null
+          observations: string | null
+          organization_id: string
+          signature: string | null
+          time_end: string | null
+          time_start: string | null
+        }
+        Insert: {
+          activity_description?: string | null
+          activity_title?: string | null
+          competency?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          mural_notes?: string | null
+          objectives?: string | null
+          observations?: string | null
+          organization_id: string
+          signature?: string | null
+          time_end?: string | null
+          time_start?: string | null
+        }
+        Update: {
+          activity_description?: string | null
+          activity_title?: string | null
+          competency?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          mural_notes?: string | null
+          objectives?: string | null
+          observations?: string | null
+          organization_id?: string
+          signature?: string | null
+          time_end?: string | null
+          time_start?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_activities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_activity_participants: {
+        Row: {
+          group_activity_id: string
+          id: string
+          observation: string | null
+          participated: boolean
+          resident_id: string
+        }
+        Insert: {
+          group_activity_id: string
+          id?: string
+          observation?: string | null
+          participated?: boolean
+          resident_id: string
+        }
+        Update: {
+          group_activity_id?: string
+          id?: string
+          observation?: string | null
+          participated?: boolean
+          resident_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_activity_participants_group_activity_id_fkey"
+            columns: ["group_activity_id"]
+            isOneToOne: false
+            referencedRelation: "group_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_activity_participants_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interview_data: {
         Row: {
           admission_reason: string | null
@@ -521,6 +619,150 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ot_assessments: {
+        Row: {
+          adl_evaluation: string | null
+          cognitive_motor_screening: string | null
+          created_at: string
+          created_by: string | null
+          date: string
+          environmental_adaptation_needs: string | null
+          functional_independence_level: string | null
+          id: string
+          initial_ot_synthesis: string | null
+          leisure_interests: string | null
+          pia_ot_goals: string | null
+          resident_id: string
+          updated_at: string
+        }
+        Insert: {
+          adl_evaluation?: string | null
+          cognitive_motor_screening?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          environmental_adaptation_needs?: string | null
+          functional_independence_level?: string | null
+          id?: string
+          initial_ot_synthesis?: string | null
+          leisure_interests?: string | null
+          pia_ot_goals?: string | null
+          resident_id: string
+          updated_at?: string
+        }
+        Update: {
+          adl_evaluation?: string | null
+          cognitive_motor_screening?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          environmental_adaptation_needs?: string | null
+          functional_independence_level?: string | null
+          id?: string
+          initial_ot_synthesis?: string | null
+          leisure_interests?: string | null
+          pia_ot_goals?: string | null
+          resident_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ot_assessments_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ot_attendances: {
+        Row: {
+          activity_type: string | null
+          attendance_notes: string | null
+          created_at: string
+          created_by: string | null
+          date_time: string
+          id: string
+          mural_notes: string | null
+          resident_id: string
+          signature: string | null
+        }
+        Insert: {
+          activity_type?: string | null
+          attendance_notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_time?: string
+          id?: string
+          mural_notes?: string | null
+          resident_id: string
+          signature?: string | null
+        }
+        Update: {
+          activity_type?: string | null
+          attendance_notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_time?: string
+          id?: string
+          mural_notes?: string | null
+          resident_id?: string
+          signature?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ot_attendances_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ot_evolutions: {
+        Row: {
+          adl_progress: string | null
+          created_at: string
+          created_by: string | null
+          date: string
+          functional_status: string | null
+          id: string
+          new_conduct: string | null
+          pia_goal_status: string | null
+          resident_id: string
+        }
+        Insert: {
+          adl_progress?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          functional_status?: string | null
+          id?: string
+          new_conduct?: string | null
+          pia_goal_status?: string | null
+          resident_id: string
+        }
+        Update: {
+          adl_progress?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          functional_status?: string | null
+          id?: string
+          new_conduct?: string | null
+          pia_goal_status?: string | null
+          resident_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ot_evolutions_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
             referencedColumns: ["id"]
           },
         ]
@@ -1363,6 +1605,7 @@ export type Database = {
         | "viewer"
         | "psicologo"
         | "nutricionista"
+        | "terapeuta_ocupacional"
       candidate_priority: "padrao" | "social_urgente" | "dependencia_duvidosa"
       candidate_stage:
         | "agendamento"
@@ -1512,6 +1755,7 @@ export const Constants = {
         "viewer",
         "psicologo",
         "nutricionista",
+        "terapeuta_ocupacional",
       ],
       candidate_priority: ["padrao", "social_urgente", "dependencia_duvidosa"],
       candidate_stage: [
