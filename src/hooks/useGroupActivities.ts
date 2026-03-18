@@ -76,7 +76,7 @@ export function useCreateGroupActivity() {
         .from("group_activities" as any)
         .insert({
           ...data.activity,
-          organization_id: organization?.id,
+          organization_id: org?.id,
           created_by: user?.id,
         })
         .select("id")
