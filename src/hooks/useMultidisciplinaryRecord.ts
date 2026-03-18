@@ -101,6 +101,30 @@ export function useMultidisciplinaryRecord(residentId: string | undefined) {
         });
       });
 
+      (otAssessments || []).forEach((r: any) => {
+        entries.push({
+          id: r.id, date: r.date || r.created_at, competency: "terapia_ocupacional", type: "Avaliação de TO",
+          professional: null, summary: r.initial_ot_synthesis || "Avaliação de TO registrada",
+          hasPrivateContent: false, hasMuralContent: false, fullData: r,
+        });
+      });
+
+      (otEvolutions || []).forEach((r: any) => {
+        entries.push({
+          id: r.id, date: r.date || r.created_at, competency: "terapia_ocupacional", type: "Evolução de TO",
+          professional: null, summary: r.adl_progress || "Evolução de TO registrada",
+          hasPrivateContent: false, hasMuralContent: false, fullData: r,
+        });
+      });
+
+      (otAttendances || []).forEach((r: any) => {
+        entries.push({
+          id: r.id, date: r.date_time || r.created_at, competency: "terapia_ocupacional", type: "Atendimento de TO",
+          professional: r.signature || null, summary: r.attendance_notes || "Atendimento de TO registrado",
+          hasPrivateContent: false, hasMuralContent: !!r.mural_notes, fullData: r,
+        });
+      });
+
       entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       return entries;
     },
