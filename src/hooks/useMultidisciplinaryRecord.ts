@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface TimelineEntry {
   id: string;
   date: string;
-  competency: "psicologia" | "nutricao";
+  competency: "psicologia" | "nutricao" | "terapia_ocupacional";
   type: string;
   professional: string | null;
   summary: string;
@@ -27,6 +27,9 @@ export function useMultidisciplinaryRecord(residentId: string | undefined) {
         { data: nutAssessments },
         { data: nutEvolutions },
         { data: nutAttendances },
+        { data: otAssessments },
+        { data: otEvolutions },
+        { data: otAttendances },
       ] = await Promise.all([
         supabase.from("psychology_anamnesis" as any).select("*").eq("resident_id", residentId),
         supabase.from("psychology_assessments" as any).select("*").eq("resident_id", residentId),
@@ -35,6 +38,9 @@ export function useMultidisciplinaryRecord(residentId: string | undefined) {
         supabase.from("nutrition_assessments" as any).select("*").eq("resident_id", residentId),
         supabase.from("nutrition_evolutions" as any).select("*").eq("resident_id", residentId),
         supabase.from("nutrition_attendances" as any).select("*").eq("resident_id", residentId),
+        supabase.from("ot_assessments" as any).select("*").eq("resident_id", residentId),
+        supabase.from("ot_evolutions" as any).select("*").eq("resident_id", residentId),
+        supabase.from("ot_attendances" as any).select("*").eq("resident_id", residentId),
       ]);
 
       const entries: TimelineEntry[] = [];
@@ -91,6 +97,30 @@ export function useMultidisciplinaryRecord(residentId: string | undefined) {
         entries.push({
           id: r.id, date: r.date_time || r.created_at, competency: "nutricao", type: "Atendimento Nutricional",
           professional: r.signature || null, summary: r.attendance_notes || "Atendimento nutricional registrado",
+          hasPrivateContent: false, hasMuralContent: !!r.mural_notes, fullData: r,
+        });
+      });
+
+      (otAssessments || []).forEach((r: any) => {
+        entries.push({
+          id: r.id, date: r.date || r.created_at, competency: "terapia_ocupacional", type: "Avaliação de TO",
+          professional: null, summary: r.initial_ot_synthesis || "Avaliação de TO registrada",
+          hasPrivateContent: false, hasMuralContent: false, fullData: r,
+        });
+      });
+
+      (otEvolutions || []).forEach((r: any) => {
+        entries.push({
+          id: r.id, date: r.date || r.created_at, competency: "terapia_ocupacional", type: "Evolução de TO",
+          professional: null, summary: r.adl_progress || "Evolução de TO registrada",
+          hasPrivateContent: false, hasMuralContent: false, fullData: r,
+        });
+      });
+
+      (otAttendances || []).forEach((r: any) => {
+        entries.push({
+          id: r.id, date: r.date_time || r.created_at, competency: "terapia_ocupacional", type: "Atendimento de TO",
+          professional: r.signature || null, summary: r.attendance_notes || "Atendimento de TO registrado",
           hasPrivateContent: false, hasMuralContent: !!r.mural_notes, fullData: r,
         });
       });
