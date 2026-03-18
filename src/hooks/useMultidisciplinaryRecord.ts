@@ -27,6 +27,9 @@ export function useMultidisciplinaryRecord(residentId: string | undefined) {
         { data: nutAssessments },
         { data: nutEvolutions },
         { data: nutAttendances },
+        { data: otAssessments },
+        { data: otEvolutions },
+        { data: otAttendances },
       ] = await Promise.all([
         supabase.from("psychology_anamnesis" as any).select("*").eq("resident_id", residentId),
         supabase.from("psychology_assessments" as any).select("*").eq("resident_id", residentId),
@@ -35,6 +38,9 @@ export function useMultidisciplinaryRecord(residentId: string | undefined) {
         supabase.from("nutrition_assessments" as any).select("*").eq("resident_id", residentId),
         supabase.from("nutrition_evolutions" as any).select("*").eq("resident_id", residentId),
         supabase.from("nutrition_attendances" as any).select("*").eq("resident_id", residentId),
+        supabase.from("ot_assessments" as any).select("*").eq("resident_id", residentId),
+        supabase.from("ot_evolutions" as any).select("*").eq("resident_id", residentId),
+        supabase.from("ot_attendances" as any).select("*").eq("resident_id", residentId),
       ]);
 
       const entries: TimelineEntry[] = [];
